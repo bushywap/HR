@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <th:block th:replace="~{fragments/head :: eacHead('HR — Employees')}"></th:block>
@@ -12,7 +12,7 @@
     <div id="content" class="main-content eac-empl-page">
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
             <div class="d-flex align-items-start gap-3 min-w-0">
-                <button type="button" id="sidebarToggle" class="btn-hamburger me-0 mt-1 flex-shrink-0">☰</button>
+                <button type="button" id="sidebarToggle" class="btn-hamburger me-0 mt-1 flex-shrink-0"><i class="fas fa-bars" aria-hidden="true"></i><span class="visually-hidden">Menu</span></button>
                 <div>
                     <h1 class="h4 fw-bold m-0" style="color: #1a2e2c; letter-spacing: -0.5px;">Employee</h1>
                     <nav class="eac-empl-breadcrumb mt-1" aria-label="Breadcrumb">
@@ -187,7 +187,7 @@
                             th:data-pos="${#strings.toLowerCase(emp.position != null ? emp.position : '')}"
                             th:data-email="${#strings.toLowerCase(emp.email != null ? emp.email : '')}">
                             <td class="search-id fw-bold text-primary" th:attr="data-eac-empl-label='Employee ID'">
-                                <a class="text-decoration-none fw-bold" th:href="@{/hr/employees/{id}(id=${emp.id})}" th:text="${emp.customEmployeeId}">ID</a>
+                                <a class="text-decoration-none fw-bold" th:href="@{/hr/employees/{id}(id=${emp.id})}" th:text="${emp.id}">ID</a>
                             </td>
                             <td class="text-start search-name" th:attr="data-eac-empl-label='Name'">
                                 <div class="fw-bold text-dark">
@@ -242,7 +242,7 @@
 
                                             <form action="/hr/employees/edit" method="POST">
                                                 <div class="modal-body p-4 text-start bg-light">
-                                                    <input type="hidden" name="customEmployeeId" th:value="${emp.customEmployeeId}">
+                                                    <input type="hidden" name="id" th:value="${emp.id}">
                                                     <input type="hidden" name="id" th:value="${emp.id}">
                                                     <div class="card p-3 mb-4 shadow-sm border-0">
                                                         <h6 class="fw-bold border-bottom pb-2 mb-3 text-secondary">Personal Profile</h6>
@@ -476,6 +476,15 @@
                     
                     <div class="card p-3 mb-4 shadow-sm border-0">
                         <h6 class="fw-bold border-bottom pb-2 mb-3 text-secondary">1. Personal Information</h6>
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label class="fw-bold small text-muted text-uppercase">EAC Employee ID <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control form-control-sm font-monospace" name="id"
+                                       placeholder="e.g. 1-00001" pattern="[0-9]+-[0-9]{5}"
+                                       title="Format: campus number, hyphen, 5 digits (e.g. 1-00001)" required>
+                                <div class="form-text">Assigned by HR / registrar (format 1-00001).</div>
+                            </div>
+                        </div>
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="fw-bold small text-muted text-uppercase">First Name</label>

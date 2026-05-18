@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <th:block th:replace="~{fragments/head :: eacHead('HR — Official Business')}"></th:block>
@@ -10,7 +10,7 @@
     <div id="content" class="main-content eac-empl-page" style="background:#f5f7f7;">
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
             <div class="d-flex align-items-start gap-2">
-                <button type="button" id="sidebarToggle" class="btn-hamburger me-0 mt-1">☰</button>
+                <button type="button" id="sidebarToggle" class="btn-hamburger me-0 mt-1"><i class="fas fa-bars" aria-hidden="true"></i><span class="visually-hidden">Menu</span></button>
                 <div>
                     <h1 class="h4 fw-bold m-0" style="color: var(--eac-dark-gray, #2d3436);">Official Business</h1>
                     <nav class="eac-empl-breadcrumb mt-1" aria-label="Breadcrumb">
@@ -35,29 +35,34 @@
         <div th:if="${successMessage}" class="alert alert-success fw-bold shadow-sm" th:text="${successMessage}"></div>
         <div th:if="${errorMessage}" class="alert alert-danger fw-bold shadow-sm" th:text="${errorMessage}"></div>
 
+        <p class="small text-muted mb-2" th:if="${obMonthStats != null}">Summary for the selected date range. Click a card to filter the table; click again to clear.</p>
         <div class="row g-3 mb-4" th:if="${obMonthStats != null}">
             <div class="col-6 col-md-3">
-                <div class="eac-att-stat h-100" style="background:linear-gradient(135deg,#c9a227,#8f7318);">
+                <button type="button" class="eac-att-stat eac-ob-stat-filter h-100 w-100 border-0 text-white"
+                        id="eacObStatPending" data-ob-status="Pending" title="Filter: pending only"
+                        style="background:linear-gradient(135deg,#c9a227,#8f7318);">
                     <h3 th:text="${#numbers.formatDecimal(obMonthStats.pending, 0, 'COMMA', 0, 'POINT')}">0</h3>
-                    <div class="sub">Pending (this month)</div>
-                </div>
+                    <div class="sub">Pending</div>
+                </button>
             </div>
             <div class="col-6 col-md-3">
-                <div class="eac-att-stat eac-att-stat--ok h-100">
+                <button type="button" class="eac-att-stat eac-att-stat--ok eac-ob-stat-filter h-100 w-100 border-0 text-white"
+                        data-ob-status="Approved" title="Filter: approved only">
                     <h3 th:text="${#numbers.formatDecimal(obMonthStats.approved, 0, 'COMMA', 0, 'POINT')}">0</h3>
                     <div class="sub">Approved</div>
-                </div>
+                </button>
             </div>
             <div class="col-6 col-md-3">
-                <div class="eac-att-stat eac-att-stat--abs h-100">
+                <button type="button" class="eac-att-stat eac-att-stat--abs eac-ob-stat-filter h-100 w-100 border-0 text-white"
+                        data-ob-status="Rejected" title="Filter: rejected only">
                     <h3 th:text="${#numbers.formatDecimal(obMonthStats.rejected, 0, 'COMMA', 0, 'POINT')}">0</h3>
                     <div class="sub">Rejected</div>
-                </div>
+                </button>
             </div>
             <div class="col-6 col-md-3">
-                <div class="eac-att-stat eac-att-stat--late h-100">
+                <div class="eac-att-stat eac-att-stat--late eac-ob-stat-total h-100 text-white" title="Sum of pending, approved, and rejected in this date range">
                     <h3 th:text="${#numbers.formatDecimal(obMonthStats.total, 0, 'COMMA', 0, 'POINT')}">0</h3>
-                    <div class="sub">OB requests</div>
+                    <div class="sub">Total in range</div>
                 </div>
             </div>
         </div>
@@ -79,12 +84,14 @@
                 </select>
             </div>
             <div class="col-6 col-md-4 col-lg-2" th:if="${allDepartments != null}">
+                <label class="form-label text-muted small mb-0">Department</label>
                 <select class="form-select form-select-sm" id="eacObFDept">
                     <option value="">All departments</option>
                     <option th:each="d : ${allDepartments}" th:value="${d}" th:text="${d}">—</option>
                 </select>
             </div>
             <div class="col-6 col-md-4 col-lg-2" th:if="${allDesignations != null}">
+                <label class="form-label text-muted small mb-0">Designation</label>
                 <select class="form-select form-select-sm" id="eacObFPos">
                     <option value="">All designations</option>
                     <option th:each="p : ${allDesignations}" th:value="${p}" th:text="${p}">—</option>
@@ -115,20 +122,20 @@
                     <input type="search" id="eacObSearch" class="form-control form-control-sm" placeholder="Name, EAC id, purpose…" autocomplete="off">
                 </div>
             </div>
-            <div class="table-responsive" style="max-height:70vh">
+            <div class="table-responsive eac-ob-table-wrap" style="max-height:70vh">
                 <table class="table table-sm table-hover align-middle mb-0" id="eacObTable">
                     <thead class="table-light small text-uppercase text-muted" style="font-size:0.65rem;">
                     <tr>
-                        <th style="width:2rem"><input type="checkbox" class="form-check-input" disabled title="Reserved for future bulk actions" aria-label="select all"></th>
                         <th>Employee</th>
                         <th>Date</th>
                         <th>Start / end</th>
                         <th>OB hours</th>
+                        <th>Source</th>
                         <th>Purpose</th>
                         <th>File</th>
                         <th>Status</th>
                         <th>Next approver</th>
-                        <th>Last approved by</th>
+                        <th>Last action by</th>
                         <th>Action</th>
                     </tr>
                     </thead>
@@ -139,20 +146,24 @@
                                  data-pos=${r.designation},
                                  data-st=${r.status},
                                  data-srch=${#strings.toLowerCase(r.eacId + ' ' + r.employeeName + ' ' + r.purpose + ' ' + r.status + ' ' + r.sourceLabel)}">
-                        <td><input type="checkbox" class="form-check-input" disabled aria-label="row select"></td>
                         <td>
-                            <div class="fw-semibold" th:text="${r.employeeName}">—</div>
+                            <a th:href="@{/hr/attendance/record(id=${r.employeeId})}" class="fw-semibold text-decoration-none" th:text="${r.employeeName}">—</a>
                             <div class="small text-muted" th:text="${r.eacId}">—</div>
                         </td>
                         <td th:text="${r.businessDate}">—</td>
-                        <td class="small"><span th:text="${r.startTime}">—</span> – <span th:text="${r.endTime}">—</span></td>
+                        <td class="small"><span th:text="${r.startTime}">—</span> - <span th:text="${r.endTime}">—</span></td>
                         <td class="fw-bold" th:text="${r.obHours}">—</td>
-                        <td class="small" style="max-width:12rem;white-space:normal;" th:text="${r.purpose}">—</td>
+                        <td class="small text-muted" th:text="${r.sourceLabel}">—</td>
+                        <td class="small" style="max-width:14rem;white-space:normal;" th:text="${r.purpose}" th:title="${r.purpose}">—</td>
                         <td>
                             <a th:if="${r.attachmentUrl != null}" th:href="${r.attachmentUrl}" target="_blank" rel="noopener" class="small">View</a>
                             <span th:unless="${r.attachmentUrl != null}">—</span>
                         </td>
-                        <td><span class="badge bg-light text-dark border" th:text="${r.status}">—</span></td>
+                        <td>
+                            <span class="badge"
+                                  th:classappend="${#strings.equalsIgnoreCase(r.status, 'PENDING')} ? ' bg-warning text-dark' : (${#strings.equalsIgnoreCase(r.status, 'APPROVED')} ? ' bg-success' : (${#strings.equalsIgnoreCase(r.status, 'REJECTED')} ? ' bg-danger' : ' bg-light text-dark border'))"
+                                  th:text="${r.status}">—</span>
+                        </td>
                         <td th:text="${r.nextApprover}">HR</td>
                         <td class="small" th:text="${r.lastActionBy}">—</td>
                         <td class="text-nowrap">
@@ -182,9 +193,9 @@
             <div class="d-flex flex-wrap justify-content-between align-items-center small text-muted border-top pt-2 mt-2" style="border-color:#e8ecec;">
                 <div id="eacObInfo">—</div>
                 <div class="d-flex gap-1">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="eacObPrev">«</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="eacObPrev" aria-label="Previous page"><i class="fas fa-chevron-left" aria-hidden="true"></i></button>
                     <span class="badge rounded-pill align-self-center" id="eacObNo">1</span>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="eacObNext">»</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="eacObNext" aria-label="Next page"><i class="fas fa-chevron-right" aria-hidden="true"></i></button>
                 </div>
             </div>
         </div>
@@ -205,7 +216,7 @@
                     <label class="form-label small">Employee <span class="text-danger">*</span></label>
                     <select name="employeeId" class="form-select form-select-sm" required>
                         <option value="">—</option>
-                        <option th:each="e : ${activeEmployees}" th:value="${e.id}" th:text="${e.firstName + ' ' + e.lastName + ' (' + (e.customEmployeeId != null ? e.customEmployeeId : e.id) + ')'}">—</option>
+                        <option th:each="e : ${activeEmployees}" th:value="${e.id}" th:text="${e.firstName + ' ' + e.lastName + ' (' + (e.id != null ? e.id : e.id) + ')'}">—</option>
                     </select>
                 </div>
                 <div class="mb-2">
@@ -307,10 +318,30 @@
         if (prev) prev.disabled = page <= 0;
         if (next) next.disabled = (start + ps >= L);
     }
+
+    function applyObStatHighlight() {
+        document.querySelectorAll('.eac-ob-stat-filter').forEach(function (btn) {
+            var st = btn.getAttribute('data-ob-status') || '';
+            btn.classList.toggle('eac-ob-stat-active', fS && fS.value === st);
+        });
+    }
+    document.querySelectorAll('.eac-ob-stat-filter').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var st = btn.getAttribute('data-ob-status') || '';
+            if (!fS) return;
+            fS.value = (fS.value === st) ? '' : st;
+            page = 0;
+            run();
+            applyObStatHighlight();
+        });
+    });
     document.addEventListener('DOMContentLoaded', function () {
+        var initialObStatus = /*[[${statusFilter}]]*/ '';
+        if (initialObStatus && fS) { fS.value = initialObStatus; }
         rows().forEach(function (r) { r.classList.remove('d-none'); });
+        applyObStatHighlight();
         run();
-        [fB,fD,fP,fS,size].forEach(function (el) { if (el) el.addEventListener('change', function () { page = 0; run(); }); });
+        [fB,fD,fP,fS,size].forEach(function (el) { if (el) el.addEventListener('change', function () { page = 0; run(); applyObStatHighlight(); }); });
         if (q) q.addEventListener('input', function () { page = 0; run(); });
         if (prev) prev.addEventListener('click', function () { if (page > 0) { page--; run(); } });
         if (next) next.addEventListener('click', function () { page++; run(); });

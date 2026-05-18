@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <th:block th:replace="~{fragments/head :: eacHead('HR — Teaching pay — Form')}"></th:block>
@@ -9,11 +9,11 @@
     <div th:replace="~{fragments/sidebar :: sidebar(activePage='teachingPay')}"></div>
     <div id="content" class="main-content p-3 p-md-4" style="max-width: 960px;">
         <div class="d-flex align-items-center gap-2 mb-3">
-            <button type="button" id="sidebarToggle" class="btn-hamburger">☰</button>
+            <button type="button" id="sidebarToggle" class="btn-hamburger"><i class="fas fa-bars" aria-hidden="true"></i><span class="visually-hidden">Menu</span></button>
             <h1 class="h4 fw-bold m-0" style="color: #1a2e2c;" th:text="${isEdit} ? 'Edit teaching pay' : 'New teaching pay'">Teaching pay</h1>
         </div>
         <p class="text-muted small mb-3">
-            <a th:href="@{/hr/teaching-pay}">← Back to list</a>
+            <a th:href="@{/hr/teaching-pay}"><i class="fas fa-arrow-left me-1" aria-hidden="true"></i> Back to list</a>
         </p>
 
         <form th:unless="${isEdit}" th:action="@{/hr/teaching-pay}" th:object="${teachingPay}" method="post" class="card border-0 shadow-sm p-3 p-md-4" novalidate>

@@ -8,13 +8,10 @@ import java.time.LocalDate;
 @Table(name = "employee") // Matches the other group's table
 public class OfficialEmployee {
 
+    /** Primary key: EAC employee id (e.g. {@code 1-00001}). Assigned manually in HR. */
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "employee_id")
-    private Long id; 
-    
-    @Column(name = "custom_employee_id", unique = true)
-    private String customEmployeeId;
+    @Column(name = "employee_id", length = 20)
+    private String id;
 
     @Column(name = "first_name", nullable = false)
     private String firstName;
@@ -202,22 +199,24 @@ public class OfficialEmployee {
     // GETTERS AND SETTERS
     // ==========================================
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    
-    public String getCustomEmployeeId() { return customEmployeeId; }
-    public void setCustomEmployeeId(String customEmployeeId) { this.customEmployeeId = customEmployeeId; }
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
+
+    /** Same value stored in {@code attendance.employee_id} and shared with payroll. */
+    public String getAttendanceEmployeeKey() {
+        return id == null || id.isBlank() ? null : id.trim();
+    }
 
     /** Campus / branch code from the first segment of the EAC id (e.g. {@code 1} from {@code 1-00001}). */
     public String getCampusCode() {
-        if (customEmployeeId == null || customEmployeeId.isBlank()) {
+        if (id == null || id.isBlank()) {
             return "";
         }
-        int i = customEmployeeId.indexOf('-');
+        int i = id.indexOf('-');
         if (i <= 0) {
-            return customEmployeeId.trim();
+            return id.trim();
         }
-        return customEmployeeId.substring(0, i).trim();
+        return id.substring(0, i).trim();
     }
     
     public String getFirstName() { return firstName; }

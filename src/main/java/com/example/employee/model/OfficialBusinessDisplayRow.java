@@ -7,7 +7,7 @@ import java.time.LocalDate;
  */
 public record OfficialBusinessDisplayRow(
     String sourceLabel,
-    long employeeInternalId,
+    String employeeId,
     String eacId,
     String employeeName,
     String department,

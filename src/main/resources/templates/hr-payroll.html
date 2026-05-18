@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <th:block th:replace="~{fragments/head :: eacHead('HR — Payroll')}"></th:block>
@@ -12,7 +12,7 @@
         
         <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
             <div class="d-flex align-items-center">
-                <button id="sidebarToggle" class="btn-hamburger">☰</button>
+                <button id="sidebarToggle" class="btn-hamburger"><i class="fas fa-bars" aria-hidden="true"></i><span class="visually-hidden">Menu</span></button>
                 <h2 class="text-danger fw-bold m-0" style="letter-spacing: -1px;">Payroll Generation</h2>
             </div>
             <div class="d-flex flex-wrap align-items-end gap-2">
@@ -71,7 +71,7 @@
                     </thead>
                     <tbody>
                         <tr th:each="emp : ${payrollList}">
-                            <td class="fw-bold text-primary" th:text="${emp.customEmployeeId}"></td>                            
+                            <td class="fw-bold text-primary" th:text="${emp.id}"></td>                            
                             
                             <td class="text-start">
                                 <div class="fw-bold text-dark" th:text="${emp.firstName + ' ' + emp.lastName}"></div>
@@ -108,7 +108,6 @@
                             </td>
                             
                             <td>
-                                <a th:href="@{/hr/payroll/download(id=${emp.id}, cutoffPeriod=${selectedPayrollCutoff})}" class="btn btn-sm btn-outline-danger fw-bold text-uppercase" style="font-size: 0.7rem;">📄 PDF Payslip</a>
                             </td>
                         </tr>
                         <tr th:if="${payrollList.empty}">

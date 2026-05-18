@@ -9,16 +9,13 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface OfficialEmployeeRepository extends JpaRepository<OfficialEmployee, Long> {
-    
-    // Finds the employee using your 1-00001 ID format
-    Optional<OfficialEmployee> findByCustomEmployeeId(String customEmployeeId);
+public interface OfficialEmployeeRepository extends JpaRepository<OfficialEmployee, String> {
     
     // Finds all active employees (their SQL uses 'Active' instead of 'HIRED')
     Iterable<OfficialEmployee> findByStatus(String status);
 
     /** Per-campus sequence for EAC ID format: 1-xxxxx, 2-xxxxx */
-    long countByCustomEmployeeIdStartingWith(String prefix);
+    long countByIdStartingWith(String prefix);
 
     @Query("""
         SELECT COUNT(e)

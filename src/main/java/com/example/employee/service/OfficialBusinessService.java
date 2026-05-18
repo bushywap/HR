@@ -38,10 +38,10 @@ public class OfficialBusinessService {
 
     public record ObMonthStats(long pending, long approved, long rejected, long total) {}
 
-    public ObMonthStats getStatsForEmployeeMonth(long internalEmployeeId, YearMonth ym) {
+    public ObMonthStats getStatsForEmployeeMonth(String employeeId, YearMonth ym) {
         LocalDate a = ym.atDay(1);
         LocalDate b = ym.atEndOfMonth();
-        List<OfficialBusinessDisplayRow> list = buildEmployeeList(internalEmployeeId, a, b);
+        List<OfficialBusinessDisplayRow> list = buildEmployeeList(employeeId, a, b);
         long p = 0, ap = 0, rj = 0;
         for (OfficialBusinessDisplayRow row : list) {
             String s = row.status() != null ? row.status() : "";
@@ -57,13 +57,18 @@ public class OfficialBusinessService {
     }
 
     public ObMonthStats getStatsForMonth(YearMonth ym) {
-        LocalDate a = ym.atDay(1);
-        LocalDate b = ym.atEndOfMonth();
-        long pe = obRepository.countByStatusAndBusinessDateBetween("PENDING", a, b);
-        long ae = obRepository.countByStatusAndBusinessDateBetween("APPROVED", a, b);
-        long re = obRepository.countByStatusAndBusinessDateBetween("REJECTED", a, b);
-        long total = pe + ae + re;
-        return new ObMonthStats(pe, ae, re, total);
+        return getStatsForDateRange(ym.atDay(1), ym.atEndOfMonth());
+    }
+
+    /** Counts for the same date range as the admin table filter. */
+    public ObMonthStats getStatsForDateRange(LocalDate from, LocalDate to) {
+        if (from == null || to == null || from.isAfter(to)) {
+            return new ObMonthStats(0, 0, 0, 0);
+        }
+        long pe = obRepository.countByStatusAndBusinessDateBetween("PENDING", from, to);
+        long ae = obRepository.countByStatusAndBusinessDateBetween("APPROVED", from, to);
+        long re = obRepository.countByStatusAndBusinessDateBetween("REJECTED", from, to);
+        return new ObMonthStats(pe, ae, re, pe + ae + re);
     }
 
     public List<OfficialBusinessDisplayRow> buildAdminList(LocalDate from, LocalDate to) {
@@ -86,13 +91,13 @@ public class OfficialBusinessService {
         return rows;
     }
 
-    public List<OfficialBusinessDisplayRow> buildEmployeeList(long internalEmployeeId, LocalDate from, LocalDate to) {
+    public List<OfficialBusinessDisplayRow> buildEmployeeList(String employeeId, LocalDate from, LocalDate to) {
         if (from == null || to == null || from.isAfter(to)) {
             return List.of();
         }
         List<OfficialBusinessDisplayRow> rows = new ArrayList<>();
         for (EacOfficialBusinessRequest r
-            : obRepository.findByEmployeeIdAndBusinessDateBetweenOrderByBusinessDateDescIdDesc(internalEmployeeId, from, to)) {
+            : obRepository.findByEmployeeIdAndBusinessDateBetweenOrderByBusinessDateDescIdDesc(employeeId, from, to)) {
             Optional<OfficialEmployee> op = officialEmployeeRepository.findById(r.getEmployeeId());
             if (op.isEmpty()) {
                 continue;
@@ -109,7 +114,7 @@ public class OfficialBusinessService {
         return new OfficialBusinessDisplayRow(
             sourceLabel,
             emp.getId(),
-            emp.getCustomEmployeeId() != null ? emp.getCustomEmployeeId() : "",
+            emp.getId() != null ? emp.getId() : "",
             emp.getFirstName() + " " + emp.getLastName(),
             emp.getDepartment() != null ? emp.getDepartment() : "—",
             emp.getPosition() != null ? emp.getPosition() : "—",
@@ -151,7 +156,7 @@ public class OfficialBusinessService {
 
     @Transactional
     public void submitRequest(
-        long employeeInternalId,
+        String employeeId,
         LocalDate businessDate,
         LocalTime startTime,
         LocalTime endTime,
@@ -172,7 +177,7 @@ public class OfficialBusinessService {
             throw new IllegalArgumentException("OB hours must be greater than zero.");
         }
         EacOfficialBusinessRequest r = new EacOfficialBusinessRequest();
-        r.setEmployeeId(employeeInternalId);
+        r.setEmployeeId(employeeId);
         r.setBusinessDate(businessDate);
         r.setStartTime(startTime);
         r.setEndTime(endTime);

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <th:block th:replace="~{fragments/head :: eacHead('HR — Government records')}"></th:block>
@@ -14,7 +14,7 @@
         <!-- Page header -->
         <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
             <div class="d-flex align-items-start gap-2">
-                <button id="sidebarToggle" class="btn-hamburger me-0 mt-1">☰</button>
+                <button id="sidebarToggle" class="btn-hamburger me-0 mt-1"><i class="fas fa-bars" aria-hidden="true"></i><span class="visually-hidden">Menu</span></button>
                 <div>
                     <h1 class="h4 fw-bold m-0" style="color:#1a2e2c;letter-spacing:-0.5px;">Government &amp; Emergency Records</h1>
                     <nav class="eac-empl-breadcrumb mt-1" aria-label="Breadcrumb">
@@ -105,7 +105,7 @@
                         <!-- ID -->
                         <td class="ps-4 py-3">
                             <span class="fw-semibold" style="color:#1a2e2c;font-size:.875rem;"
-                                  th:text="${emp.customEmployeeId}">—</span>
+                                  th:text="${emp.id}">—</span>
                         </td>
 
                         <!-- Employee -->
@@ -235,7 +235,7 @@
                                                     <div>
                                                         <h5 class="modal-title fw-bold mb-0" style="font-size:1rem;">Update Records</h5>
                                                         <p class="text-muted mb-0 mt-1" style="font-size:.72rem;"
-                                                           th:text="${emp.firstName + ' ' + emp.lastName + ' · ' + emp.customEmployeeId}">Name</p>
+                                                           th:text="${emp.firstName + ' ' + emp.lastName + ' · ' + emp.id}">Name</p>
                                                     </div>
                                                 </div>
                                                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>

@@ -13,7 +13,7 @@ public final class AttendanceViewModels {
 
     public record AdminAttendanceLogRow(
         long logId,
-        long employeeId,
+        String employeeId,
         String eacId,
         String name,
         String department,

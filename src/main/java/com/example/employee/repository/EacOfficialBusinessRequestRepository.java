@@ -14,7 +14,7 @@ public interface EacOfficialBusinessRequestRepository extends JpaRepository<EacO
         LocalDate from, LocalDate to);
 
     List<EacOfficialBusinessRequest> findByEmployeeIdAndBusinessDateBetweenOrderByBusinessDateDescIdDesc(
-        Long employeeId, LocalDate from, LocalDate to);
+        String employeeId, LocalDate from, LocalDate to);
 
     long countByStatusAndBusinessDateBetween(String status, LocalDate from, LocalDate to);
 }

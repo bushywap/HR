@@ -11,7 +11,7 @@ import java.util.List;
 public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Integer> {
 
     List<LeaveRequest> findByStatusOrderByIdDesc(String status);
-    List<LeaveRequest> findByEmployeeIdOrderByIdDesc(int employeeId);
+    List<LeaveRequest> findByEmployeeIdOrderByIdDesc(String employeeId);
 
     List<LeaveRequest> findAllByOrderByStartDateDesc();
 
@@ -25,7 +25,7 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Inte
     @Query("SELECT l FROM LeaveRequest l WHERE l.employeeId = :empId AND l.startDate IS NOT NULL AND l.endDate IS NOT NULL"
         + " AND l.startDate <= :rangeEnd AND l.endDate >= :rangeStart ORDER BY l.startDate DESC, l.id DESC")
     List<LeaveRequest> findByEmployeeIdOverlapping(
-        @Param("empId") int employeeId,
+        @Param("empId") String employeeId,
         @Param("rangeStart") LocalDate rangeStart,
         @Param("rangeEnd") LocalDate rangeEnd);
 

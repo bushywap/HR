@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <th:block th:replace="~{fragments/head :: eacHead('HR — Shift management')}"></th:block>
@@ -9,7 +9,7 @@
     <div id="content" class="main-content eac-empl-page">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div class="d-flex align-items-center gap-3">
-                <button type="button" id="sidebarToggle" class="btn-hamburger">☰</button>
+                <button type="button" id="sidebarToggle" class="btn-hamburger"><i class="fas fa-bars" aria-hidden="true"></i><span class="visually-hidden">Menu</span></button>
                 <div>
                     <h1 class="h4 fw-bold m-0" style="color:#1a2e2c;">Shift Management</h1>
                     <div class="small text-muted">Shift &amp; Schedule</div>
@@ -27,7 +27,7 @@
                     <label class="form-label small">Employee</label>
                     <select class="form-select form-select-sm" name="employeeId" required>
                         <option value="">Select employee</option>
-                        <option th:each="e : ${allEmployees}" th:value="${e.id}" th:text="${e.customEmployeeId + ' - ' + e.firstName + ' ' + e.lastName}">Emp</option>
+                        <option th:each="e : ${allEmployees}" th:value="${e.id}" th:text="${e.id + ' - ' + e.firstName + ' ' + e.lastName}">Emp</option>
                     </select>
                 </div>
                 <div class="col-md-3">
@@ -111,13 +111,14 @@
                 <tr th:each="emp : ${employees}">
                     <td style="min-width:220px;">
                         <div class="fw-semibold" th:text="${emp.firstName + ' ' + emp.lastName}">Name</div>
-                        <div class="small text-muted" th:text="${emp.customEmployeeId + ' · ' + (emp.department != null ? emp.department : '—')}">ID</div>
+                        <div class="small text-muted" th:text="${emp.id + ' · ' + (emp.department != null ? emp.department : '—')}">ID</div>
                     </td>
-                    <td th:each="d : ${weekDates}" style="min-width:150px;">
+                    <td th:each="d : ${weekDates}" style="min-width:150px;"
+                        th:with="akey=${emp.id + '|' + #temporals.format(d, 'yyyy-MM-dd')}, cell=${assignmentMap.get(akey)}">
                         <span class="badge text-bg-light border"
-                              th:if="${assignmentMap[emp.id + '|' + d] != null}"
-                              th:text="${assignmentMap[emp.id + '|' + d].shift.name + (assignmentMap[emp.id + '|' + d].overrideTimeIn != null and assignmentMap[emp.id + '|' + d].overrideTimeOut != null ? ' (' + assignmentMap[emp.id + '|' + d].overrideTimeIn + '-' + assignmentMap[emp.id + '|' + d].overrideTimeOut + ')' : '')}">Shift</span>
-                        <span class="text-muted small" th:if="${assignmentMap[emp.id + '|' + d] == null}">—</span>
+                              th:if="${cell != null}"
+                              th:text="${cell.shift.name + (cell.overrideTimeIn != null and cell.overrideTimeOut != null ? ' (' + cell.overrideTimeIn + '-' + cell.overrideTimeOut + ')' : '')}">Shift</span>
+                        <span class="text-muted small" th:if="${cell == null}">—</span>
                     </td>
                 </tr>
                 <tr th:if="${#lists.isEmpty(employees)}">

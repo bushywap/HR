@@ -185,8 +185,17 @@ public class AdmissionController {
     }
 
     @PostMapping("/hr/hire")
-    public String hireApplicant(@RequestParam int id, @RequestParam String date, @RequestParam String time) {
-        service.hireApplicant(id, date, time);
+    public String hireApplicant(
+            @RequestParam int id,
+            @RequestParam String date,
+            @RequestParam String time,
+            @RequestParam(name = "eacEmployeeId") String eacEmployeeId,
+            RedirectAttributes redirectAttributes) {
+        try {
+            service.hireApplicant(id, date, time, eacEmployeeId);
+        } catch (IllegalArgumentException ex) {
+            redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
+        }
         return "redirect:/hr/applicants";
     }
 
@@ -197,7 +206,8 @@ public class AdmissionController {
             @RequestParam(required = false) String probationEndDate,
             @RequestParam(required = false) String contractEndDate,
             @RequestParam(required = false) String separationDate,
-            @RequestParam(required = false) String separationNote) {
+            @RequestParam(required = false) String separationNote,
+            RedirectAttributes redirectAttributes) {
         employee.setDateHired(parseOptionalDate(dateHired));
         employee.setProbationEndDate(parseOptionalDate(probationEndDate));
         employee.setContractEndDate(parseOptionalDate(contractEndDate));
@@ -206,7 +216,12 @@ public class AdmissionController {
             String t = separationNote.trim();
             employee.setSeparationNote(t.length() > 500 ? t.substring(0, 500) : t);
         }
-        service.addEmployeeManually(employee);
+        try {
+            service.addEmployeeManually(employee);
+        } catch (IllegalArgumentException ex) {
+            redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
+            return "redirect:/hr/employees";
+        }
         return "redirect:/hr/employees";
     }
 
@@ -221,7 +236,7 @@ public class AdmissionController {
     public String resetLeaveCredits(
             @RequestParam String mode,
             @RequestParam(required = false) String department,
-            @RequestParam(required = false) List<Long> employeeIds,
+            @RequestParam(required = false) List<String> employeeIds,
             RedirectAttributes redirectAttributes) {
         try {
             LeaveCreditResetMode m = LeaveCreditResetMode.valueOf(mode.trim().toUpperCase(Locale.ROOT));
@@ -241,7 +256,7 @@ public class AdmissionController {
 
     @PostMapping("/hr/employees/edit")
     public String editEmployee(java.security.Principal principal,
-                               @RequestParam Long id, 
+                               @RequestParam String id, 
                                @RequestParam String department, 
                                @RequestParam String positionApplied, 
                                @RequestParam String status,
@@ -316,58 +331,6 @@ public class AdmissionController {
         return "kiosk";
     }
 
-    @GetMapping("/hr/payroll")
-    public String showPayroll(
-            Model model,
-            @RequestParam(required = false) String search,
-            @RequestParam(required = false) String cutoffPeriod,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate customFrom,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate customTo,
-            @RequestParam(required = false) String applyMode) {
-        String key = service.effectivePayrollCutoffKey(cutoffPeriod, customFrom, customTo, applyMode);
-        model.addAttribute("payrollList", service.getPayrollData(key, search));
-        model.addAttribute("selectedPayrollCutoff", key);
-        model.addAttribute("searchKeyword", search);
-        model.addAttribute("cutoffOptions", service.getCutoffOptionsWithPresets(6));
-        enrichCutoffModel(model, key);
-        model.addAttribute("cutoffPeriod", PayrollPeriodUtil.formatEnglishRangeLabel(PayrollPeriodUtil.resolve(key)));
-        return "hr-payroll";
-    }
-
-    @GetMapping("/hr/payroll/download")
-    public void downloadPayslip(@RequestParam int id, @RequestParam(required = false) String cutoffPeriod, HttpServletResponse response) {
-        response.setContentType("application/pdf");
-        response.setHeader("Content-Disposition", "attachment; filename=EAC_Payslip_EAC" + id + ".pdf");
-        service.exportPayslipToPDF(id, cutoffPeriod, response);
-    }
-
-    @GetMapping("/hr/salary-audit")
-    public String showSalaryAudit(
-            Model model,
-            @RequestParam(required = false) String search,
-            @RequestParam(required = false) String department,
-            @RequestParam(required = false) String cutoff,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate customFrom,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate customTo,
-            @RequestParam(required = false) String applyMode) {
-        String key = service.effectivePayrollCutoffKey(
-            (cutoff == null || cutoff.isBlank()) ? null : cutoff,
-            customFrom, customTo, applyMode);
-        if (key == null || key.isBlank()) {
-            key = service.getCurrentPayrollCutoffKey();
-        }
-        PayrollPeriodUtil.PayrollPeriod p = PayrollPeriodUtil.resolve(key);
-        model.addAttribute("rows", service.listSalaryAudit(key, search, department));
-        model.addAttribute("selectedCutoff", key);
-        model.addAttribute("cutoffOptions", service.getCutoffOptionsWithPresets(6));
-        model.addAttribute("searchKeyword", search);
-        model.addAttribute("selectedDept", department);
-        model.addAttribute("eacDepartments", departmentCodeService.listAllForUi());
-        model.addAttribute("periodDayCount", p.inclusiveDayCount());
-        enrichCutoffModel(model, key);
-        return "hr-salary-audit";
-    }
-
     @GetMapping("/hr/records")
     public String showHrRecords(Model model, @RequestParam(required = false) String search) {
         List<OfficialEmployee> list = officialEmployeeRepository.findAll();
@@ -382,7 +345,7 @@ public class AdmissionController {
     @PostMapping("/hr/records/update")
     public String updateEmployeeRecords(
             java.security.Principal principal,
-            @RequestParam Long id,
+            @RequestParam String id,
             @RequestParam(required = false) String sssNumber,
             @RequestParam(required = false) String tinNumber,
             @RequestParam(required = false) String philhealthNumber,
@@ -416,7 +379,7 @@ public class AdmissionController {
     @PostMapping("/hr/employees/{id}/info/update")
     public String updateEmployeeInfoInline(
             java.security.Principal principal,
-            @PathVariable Long id,
+            @PathVariable String id,
             @RequestParam(required = false) String email,
             @RequestParam(required = false) String phone,
             RedirectAttributes ra) {
@@ -460,6 +423,7 @@ public class AdmissionController {
     public String showHrLeaves(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
+            @RequestParam(required = false) String statusFilter,
             Model model) {
         LocalDate today = LocalDate.now();
         if (dateFrom == null) {
@@ -475,8 +439,9 @@ public class AdmissionController {
         }
         model.addAttribute("dateFrom", dateFrom);
         model.addAttribute("dateTo", dateTo);
+        model.addAttribute("statusFilter", normalizeLeaveStatusFilter(statusFilter));
         model.addAttribute("leaveRows", service.buildAdminLeaveList(dateFrom, dateTo));
-        model.addAttribute("leaveMonthStats", service.getLeaveStatsForMonth(YearMonth.from(today)));
+        model.addAttribute("leaveMonthStats", service.getLeaveStatsForDateRange(dateFrom, dateTo));
         model.addAttribute("allLeaveTypes", service.getLeaveTypeFilterOptions());
         model.addAttribute("allDepartments", service.getDistinctDepartments());
         model.addAttribute("allBranches", service.getDistinctCampusCodes());
@@ -500,7 +465,7 @@ public class AdmissionController {
             return "redirect:/hr/leaves";
         }
         model.addAttribute("req", req);
-        model.addAttribute("leaveEmployee", officialEmployeeRepository.findById((long) req.getEmployeeId()).orElse(null));
+        model.addAttribute("leaveEmployee", officialEmployeeRepository.findById(req.getEmployeeId()).orElse(null));
         return "hr-leave-approval";
     }
 
@@ -547,11 +512,11 @@ public class AdmissionController {
     }
 
     @GetMapping("/hr/leave-history/{id}")
-    public String viewEmployeeLeaveCalendar(@org.springframework.web.bind.annotation.PathVariable Long id, Model model) { 
+    public String viewEmployeeLeaveCalendar(@org.springframework.web.bind.annotation.PathVariable String id, Model model) { 
         OfficialEmployee emp = officialEmployeeRepository.findById(id).orElse(null);
         if (emp == null) return "redirect:/hr/leave-history";
 
-        java.util.List<LeaveRequest> allLeaves = leaveRequestRepository.findByEmployeeIdOrderByIdDesc(id.intValue());
+        java.util.List<LeaveRequest> allLeaves = leaveRequestRepository.findByEmployeeIdOrderByIdDesc(id);
 
         model.addAttribute("employee", emp);
         model.addAttribute("allLeaves", allLeaves);
@@ -602,7 +567,7 @@ public class AdmissionController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
             java.security.Principal principal,
             Model model) {
-        OfficialEmployee emp = officialEmployeeRepository.findByCustomEmployeeId(principal.getName()).orElse(null);
+        OfficialEmployee emp = officialEmployeeRepository.findById(principal.getName()).orElse(null);
         if (emp == null) {
             return "redirect:/employee-login";
         }
@@ -621,9 +586,9 @@ public class AdmissionController {
         model.addAttribute("employee", emp);
         model.addAttribute("dateFrom", dateFrom);
         model.addAttribute("dateTo", dateTo);
-        model.addAttribute("leaveRows", service.buildEmployeeLeaveList(emp.getId().intValue(), dateFrom, dateTo));
-        model.addAttribute("allLeaves", leaveRequestRepository.findByEmployeeIdOrderByIdDesc(emp.getId().intValue()));
-        model.addAttribute("leaveMonthStats", service.getLeaveStatsForEmployeeMonth(emp.getId().intValue(), YearMonth.from(today)));
+        model.addAttribute("leaveRows", service.buildEmployeeLeaveList(emp.getId(), dateFrom, dateTo));
+        model.addAttribute("allLeaves", leaveRequestRepository.findByEmployeeIdOrderByIdDesc(emp.getId()));
+        model.addAttribute("leaveMonthStats", service.getLeaveStatsForEmployeeMonth(emp.getId(), YearMonth.from(today)));
         model.addAttribute("allLeaveTypes", service.getLeaveTypeFilterOptions());
         return "employee-leaves";
     }
@@ -656,20 +621,20 @@ public class AdmissionController {
     @GetMapping("/employee/dashboard")
     public String viewEmployeeDashboard(java.security.Principal principal, Model model) {
         String loggedInId = principal.getName(); 
-        OfficialEmployee emp = officialEmployeeRepository.findByCustomEmployeeId(loggedInId).orElse(null);
+        OfficialEmployee emp = officialEmployeeRepository.findById(loggedInId).orElse(null);
         
         if (emp != null) {
             model.addAttribute("employee", emp);
-            model.addAttribute("myLeaves", leaveRequestRepository.findByEmployeeIdOrderByIdDesc(emp.getId().intValue()));
+            model.addAttribute("myLeaves", leaveRequestRepository.findByEmployeeIdOrderByIdDesc(emp.getId()));
             model.addAttribute("otCutoffKey", service.getCurrentPayrollCutoffKey());
-            model.addAttribute("otLines", service.getEmployeeOvertimeReviewLines(emp.getId().intValue(), service.getCurrentPayrollCutoffKey()));
+            model.addAttribute("otLines", service.getEmployeeOvertimeReviewLines(emp.getId(), service.getCurrentPayrollCutoffKey()));
         }
         return "employee-dashboard"; 
     }
 
     @GetMapping("/employee/my-record")
     public String employeePersonnel201(java.security.Principal principal, Model model) {
-        OfficialEmployee emp = officialEmployeeRepository.findByCustomEmployeeId(principal.getName()).orElse(null);
+        OfficialEmployee emp = officialEmployeeRepository.findById(principal.getName()).orElse(null);
         if (emp == null) {
             return "redirect:/employee/dashboard";
         }
@@ -679,7 +644,7 @@ public class AdmissionController {
     }
 
     @GetMapping("/hr/employees/{id}/record")
-    public String hrPersonnel201(@PathVariable Long id, Model model) {
+    public String hrPersonnel201(@PathVariable String id, Model model) {
         OfficialEmployee emp = officialEmployeeRepository.findById(id).orElse(null);
         if (emp == null) {
             return "redirect:/hr/employees";
@@ -690,7 +655,7 @@ public class AdmissionController {
     }
 
     @GetMapping("/hr/employees/{id}")
-    public String hrEmployeeWorkspace(@PathVariable Long id,
+    public String hrEmployeeWorkspace(@PathVariable String id,
                                       @RequestParam(required = false, defaultValue = "info") String tab,
                                       Model model) {
         OfficialEmployee emp = officialEmployeeRepository.findById(id).orElse(null);
@@ -706,14 +671,14 @@ public class AdmissionController {
         model.addAttribute("employee", emp);
         model.addAttribute("recordMode", "hr");
         model.addAttribute("activeTab", activeTab);
-        model.addAttribute("logs", service.getEmployeeAttendanceHistory(emp.getId().intValue()));
+        model.addAttribute("logs", service.getEmployeeAttendanceHistory(emp.getId()));
         return "hr-employee-workspace";
     }
 
     @PostMapping("/hr/employees/{id}/eac/update")
     public String updateEmployeeEacSettings(
             java.security.Principal principal,
-            @PathVariable Long id,
+            @PathVariable String id,
             @RequestParam(required = false) String department,
             @RequestParam(required = false) String position,
             @RequestParam(required = false) String status,
@@ -779,7 +744,7 @@ public class AdmissionController {
 
     @PostMapping("/hr/employees/{id}/profile/photo")
     public String hrUploadEmployeeProfilePhoto(
-            @PathVariable Long id,
+            @PathVariable String id,
             @RequestParam("photo") MultipartFile photo,
             org.springframework.web.servlet.mvc.support.RedirectAttributes ra) {
         OfficialEmployee emp = officialEmployeeRepository.findById(id).orElse(null);
@@ -789,7 +754,7 @@ public class AdmissionController {
         }
         try {
             service.saveEmployeeProfilePhoto(emp, photo);
-            ra.addFlashAttribute("successMessage", "Profile photo updated for " + emp.getCustomEmployeeId() + ".");
+            ra.addFlashAttribute("successMessage", "Profile photo updated for " + emp.getId() + ".");
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("errorMessage", e.getMessage());
         } catch (IOException e) {
@@ -804,7 +769,7 @@ public class AdmissionController {
     @PostMapping("/hr/employees/{id}/201/update")
     public String updateEmployee201Inline(
             java.security.Principal principal,
-            @PathVariable Long id,
+            @PathVariable String id,
             @RequestParam(required = false) String phone,
             @RequestParam(required = false) String gender,
             @RequestParam(required = false) String civilStatus,
@@ -872,10 +837,10 @@ public class AdmissionController {
 
     @PostMapping("/employee/leave/submit")
     public String submitLeaveRequest(@ModelAttribute LeaveRequest req, java.security.Principal principal, org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes) {
-        OfficialEmployee emp = officialEmployeeRepository.findByCustomEmployeeId(principal.getName()).orElse(null);
+        OfficialEmployee emp = officialEmployeeRepository.findById(principal.getName()).orElse(null);
         
         if (emp != null) {
-            req.setEmployeeId(emp.getId().intValue()); 
+            req.setEmployeeId(emp.getId()); 
             String result = service.processLeaveRequest(req);
             
             if (result.contains("Error")) {
@@ -889,7 +854,7 @@ public class AdmissionController {
 
     @GetMapping("/hr/attendance")
     public String showAttendanceAdmin(
-            @RequestParam(required = false) Integer id,
+            @RequestParam(required = false) String id,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
             @RequestParam(required = false, defaultValue = "attendance") String tab,
@@ -922,8 +887,8 @@ public class AdmissionController {
     }
 
     @GetMapping("/hr/attendance/record")
-    public String showHrAttendanceRecord(@RequestParam int id, Model model) {
-        OfficialEmployee employee = officialEmployeeRepository.findById((long) id).orElse(null);
+    public String showHrAttendanceRecord(@RequestParam String id, Model model) {
+        OfficialEmployee employee = officialEmployeeRepository.findById(id.trim()).orElse(null);
         model.addAttribute("employee", employee);
         model.addAttribute("logs", service.getEmployeeAttendanceHistory(id));
         return "hr-attendance-record";
@@ -931,14 +896,14 @@ public class AdmissionController {
 
     @GetMapping("/employee/attendance")
     public String employeeAttendancePage(java.security.Principal principal, Model model) {
-        OfficialEmployee emp = officialEmployeeRepository.findByCustomEmployeeId(principal.getName()).orElse(null);
+        OfficialEmployee emp = officialEmployeeRepository.findById(principal.getName()).orElse(null);
         if (emp == null) {
             return "redirect:/employee-login";
         }
         model.addAttribute("employee", emp);
-        model.addAttribute("logs", service.getEmployeeAttendanceHistory(emp.getId().intValue()));
+        model.addAttribute("logs", service.getEmployeeAttendanceHistory(emp.getId()));
         model.addAttribute("statSummary", service.buildEmployeeAttendanceStats(emp));
-        var todayLog = service.findAttendanceLogForToday(emp.getId().intValue());
+        var todayLog = service.findAttendanceLogForToday(emp.getId());
         com.example.employee.model.AttendanceLog tlog = todayLog.orElse(null);
         model.addAttribute("todayLog", tlog);
         boolean clockedIn = tlog != null
@@ -963,9 +928,10 @@ public class AdmissionController {
     }
 
     @GetMapping("/hr/attendance/download")
-    public void downloadDTR(@RequestParam int id, @RequestParam(required = false) String cutoffPeriod, HttpServletResponse response) {
+    public void downloadDTR(@RequestParam String id, @RequestParam(required = false) String cutoffPeriod, HttpServletResponse response) {
         response.setContentType("application/pdf");
-        response.setHeader("Content-Disposition", "attachment; filename=DTR_EAC-" + String.format("%05d", id) + ".pdf");
+        String safe = id != null ? id.replaceAll("[^0-9A-Za-z-]", "_") : "employee";
+        response.setHeader("Content-Disposition", "attachment; filename=DTR_" + safe + ".pdf");
         service.exportDTRToPDF(id, cutoffPeriod, response);
     }
 
@@ -984,7 +950,7 @@ public class AdmissionController {
             key = cutoffOptions.keySet().iterator().next();
         }
 
-        model.addAttribute("employees", service.getPayrollData(key, search));
+        model.addAttribute("employees", service.listEmployeesWithAttendanceForPeriod(key, search));
         model.addAttribute("searchKeyword", search);
         model.addAttribute("lastFile", service.getLastUploadedFileName());
         model.addAttribute("lastTime", service.getLastUploadTime());
@@ -1017,7 +983,7 @@ public class AdmissionController {
 
     @GetMapping("/hr/employees/biometrics")
     public String viewSingleEmployeeBiometrics(
-            @RequestParam("id") Long id,
+            @RequestParam("id") String id,
             @RequestParam(required = false) String cutoffPeriod,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate customFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate customTo,
@@ -1031,7 +997,7 @@ public class AdmissionController {
             }
             model.addAttribute("employee", emp);
 
-            java.util.List<com.example.employee.model.AttendanceLog> logs = service.getEmployeeAttendanceHistoryByCutoff(id.intValue(), key);
+            java.util.List<com.example.employee.model.AttendanceLog> logs = service.getEmployeeAttendanceHistoryByCutoff(id, key);
             model.addAttribute("logs", logs);
             
             double totalRaw = 0;
@@ -1071,7 +1037,7 @@ public class AdmissionController {
     }
 
     @GetMapping("/hr/employees/delete")
-    public String deleteEmployee(@RequestParam("id") Long id, org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes) {
+    public String deleteEmployee(@RequestParam("id") String id, org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes) {
         service.deleteEmployee(id);
         redirectAttributes.addFlashAttribute("successMessage", "Employee successfully deleted from the database.");
         return "redirect:/hr/employees";
@@ -1125,7 +1091,7 @@ public class AdmissionController {
             @RequestParam(required = false) String dtrPdfApply,
             java.security.Principal principal,
             Model model) {
-        OfficialEmployee emp = officialEmployeeRepository.findByCustomEmployeeId(principal.getName()).orElse(null);
+        OfficialEmployee emp = officialEmployeeRepository.findById(principal.getName()).orElse(null);
         if (emp == null) {
             return "redirect:/employee-login";
         }
@@ -1138,7 +1104,7 @@ public class AdmissionController {
         java.time.LocalDate from = ym.atDay(1);
         java.time.LocalDate to = ym.atEndOfMonth();
         model.addAttribute("employee", emp);
-        model.addAttribute("dtrRows", service.buildDtrRows(emp.getId().intValue(), from, to));
+        model.addAttribute("dtrRows", service.buildDtrRows(emp.getId(), from, to));
         model.addAttribute("dtrYear", ym.getYear());
         model.addAttribute("dtrMonth", ym.getMonthValue());
         model.addAttribute("dtrPeriodLabel", ym.getMonth().toString() + " " + ym.getYear());
@@ -1160,57 +1126,14 @@ public class AdmissionController {
             @RequestParam String cutoffPeriod,
             java.security.Principal principal,
             HttpServletResponse response) {
-        OfficialEmployee emp = officialEmployeeRepository.findByCustomEmployeeId(principal.getName()).orElse(null);
+        OfficialEmployee emp = officialEmployeeRepository.findById(principal.getName()).orElse(null);
         if (emp == null) {
             return;
         }
         response.setContentType("application/pdf");
-        String safe = emp.getCustomEmployeeId() != null ? emp.getCustomEmployeeId().replaceAll("[^0-9A-Za-z-]", "_") : String.valueOf(emp.getId());
+        String safe = emp.getId() != null ? emp.getId().replaceAll("[^0-9A-Za-z-]", "_") : String.valueOf(emp.getId());
         response.setHeader("Content-Disposition", "attachment; filename=DTR_" + safe + ".pdf");
-        service.exportDTRToPDF(emp.getId().intValue(), cutoffPeriod, response);
-    }
-
-    @GetMapping("/employee/payslip")
-    public String employeePayslip(
-            @RequestParam(required = false) String cutoffPeriod,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate customFrom,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate customTo,
-            @RequestParam(required = false) String applyMode,
-            java.security.Principal principal,
-            Model model) {
-        OfficialEmployee emp = officialEmployeeRepository.findByCustomEmployeeId(principal.getName()).orElse(null);
-        if (emp == null) {
-            return "redirect:/employee-login";
-        }
-        String key = service.effectivePayrollCutoffKey(cutoffPeriod, customFrom, customTo, applyMode);
-        if (key == null || key.isBlank()) {
-            key = service.getCurrentPayrollCutoffKey();
-        }
-        model.addAttribute("cutoffOptions", service.getCutoffOptionsWithPresets(6));
-        model.addAttribute("selectedCutoff", key);
-        enrichCutoffModel(model, key);
-        java.util.List<OfficialEmployee> payroll = service.getPayrollData(key, null);
-        OfficialEmployee row = payroll.stream()
-            .filter(e -> e.getId().equals(emp.getId()))
-            .findFirst()
-            .orElse(emp);
-        model.addAttribute("employee", row);
-        return "employee-payslip";
-    }
-
-    @GetMapping("/employee/payslip/download")
-    public void employeePayslipDownload(
-            @RequestParam String cutoffPeriod,
-            java.security.Principal principal,
-            HttpServletResponse response) {
-        OfficialEmployee emp = officialEmployeeRepository.findByCustomEmployeeId(principal.getName()).orElse(null);
-        if (emp == null) {
-            return;
-        }
-        response.setContentType("application/pdf");
-        String safe = emp.getCustomEmployeeId() != null ? emp.getCustomEmployeeId().replaceAll("[^0-9A-Za-z-]", "_") : String.valueOf(emp.getId());
-        response.setHeader("Content-Disposition", "attachment; filename=Payslip_" + safe + ".pdf");
-        service.exportPayslipToPDF(emp.getId().intValue(), cutoffPeriod, response);
+        service.exportDTRToPDF(emp.getId(), cutoffPeriod, response);
     }
 
     @PostMapping("/employee/profile/photo")
@@ -1218,7 +1141,7 @@ public class AdmissionController {
             @RequestParam("photo") org.springframework.web.multipart.MultipartFile photo,
             java.security.Principal principal,
             org.springframework.web.servlet.mvc.support.RedirectAttributes ra) {
-        OfficialEmployee emp = officialEmployeeRepository.findByCustomEmployeeId(principal.getName()).orElse(null);
+        OfficialEmployee emp = officialEmployeeRepository.findById(principal.getName()).orElse(null);
         if (emp == null) {
             return "redirect:/employee-login";
         }
@@ -1235,7 +1158,7 @@ public class AdmissionController {
 
     @GetMapping("/api/attendance/logs")
     @org.springframework.web.bind.annotation.ResponseBody
-    public java.util.List<com.example.employee.model.AttendanceLog> getAttendanceLogsApi(@RequestParam int employeeId) {
+    public java.util.List<com.example.employee.model.AttendanceLog> getAttendanceLogsApi(@RequestParam String employeeId) {
         return service.getEmployeeAttendanceHistory(employeeId);
     }
 
@@ -1251,29 +1174,7 @@ public class AdmissionController {
         return "hr-audit-log";
     }
 
-    @GetMapping("/hr/payroll-periods")
-    public String hrPayrollPeriods(Model model) {
-        model.addAttribute("presets", service.listAllPayrollPeriodPresets());
-        return "hr-payroll-periods";
-    }
-
-    @PostMapping("/hr/payroll-periods/add")
-    public String addPayrollPeriod(
-            @RequestParam String name,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate rangeFrom,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate rangeTo) {
-        String key = PayrollPeriodUtil.toCutoffKey(rangeFrom, rangeTo);
-        service.savePayrollPeriodPreset(name, key);
-        return "redirect:/hr/payroll-periods";
-    }
-
-    @PostMapping("/hr/payroll-periods/delete")
-    public String deletePayrollPeriod(@RequestParam long id) {
-        service.deletePayrollPeriodPreset(id);
-        return "redirect:/hr/payroll-periods";
-    }
-
-    /** Populates custom date pickers and human-readable range for payroll cutoff UIs. */
+    /** Populates custom date pickers and human-readable range for pay-period filters (biometrics / DTR). */
     private void enrichCutoffModel(Model model, String selectedCutoffKey) {
         if (selectedCutoffKey == null || selectedCutoffKey.isBlank()) {
             selectedCutoffKey = service.getCurrentPayrollCutoffKey();
@@ -1283,5 +1184,17 @@ public class AdmissionController {
         model.addAttribute("customRangeTo", p.end().toString());
         model.addAttribute("cutoffRangeLabel", PayrollPeriodUtil.formatEnglishRangeLabel(p));
         model.addAttribute("isCustomRangeCutoff", Boolean.valueOf(PayrollPeriodUtil.isCustomRangeKey(selectedCutoffKey)));
+    }
+
+    private static String normalizeLeaveStatusFilter(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return "";
+        }
+        return switch (raw.trim().toUpperCase()) {
+            case "PENDING" -> "Pending";
+            case "APPROVED" -> "Approved";
+            case "REJECTED" -> "Rejected";
+            default -> "";
+        };
     }
 }

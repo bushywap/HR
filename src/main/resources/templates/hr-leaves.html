@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <th:block th:replace="~{fragments/head :: eacHead('HR — Leaves')}"></th:block>
@@ -10,7 +10,7 @@
     <div id="content" class="main-content eac-empl-page" style="background:#f5f7f7;">
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-2">
             <div class="d-flex align-items-start gap-2">
-                <button type="button" id="sidebarToggle" class="btn-hamburger me-0 mt-1">☰</button>
+                <button type="button" id="sidebarToggle" class="btn-hamburger me-0 mt-1"><i class="fas fa-bars" aria-hidden="true"></i><span class="visually-hidden">Menu</span></button>
                 <div>
                     <h1 class="h4 fw-bold m-0" style="color: var(--eac-dark-gray, #2d3436); letter-spacing:-0.5px;">Leaves</h1>
                     <nav class="eac-empl-breadcrumb mt-1" aria-label="Breadcrumb">
@@ -50,23 +50,34 @@
         <div th:if="${successMessage}" class="alert alert-success fw-bold shadow-sm" th:text="${successMessage}"></div>
         <div th:if="${errorMessage}" class="alert alert-danger fw-bold shadow-sm" th:text="${errorMessage}"></div>
 
+        <p class="small text-muted mb-2" th:if="${leaveMonthStats != null}">Summary for the selected date range. Click a card to filter the table; click again to clear.</p>
         <div class="row g-3 mb-4" th:if="${leaveMonthStats != null}">
-            <div class="col-6 col-md-4">
-                <div class="eac-att-stat eac-att-stat--ok h-100">
-                    <div class="sub"><i class="fas fa-user-check me-1"></i>Approved leaves (this month)</div>
-                    <h3 th:text="${#numbers.formatDecimal(leaveMonthStats.approved, 0, 'COMMA', 0, 'POINT')}">0</h3>
-                </div>
-            </div>
-            <div class="col-6 col-md-4">
-                <div class="eac-att-stat eac-att-stat--abs h-100">
-                    <div class="sub"><i class="fas fa-user-times me-1"></i>Rejected leaves</div>
-                    <h3 th:text="${#numbers.formatDecimal(leaveMonthStats.rejected, 0, 'COMMA', 0, 'POINT')}">0</h3>
-                </div>
-            </div>
-            <div class="col-6 col-md-4">
-                <div class="eac-att-stat eac-att-stat--late h-100">
-                    <div class="sub"><i class="fas fa-user-clock me-1"></i>Pending requests</div>
+            <div class="col-6 col-md-3">
+                <button type="button" class="eac-att-stat eac-lv-stat-filter h-100 w-100 border-0 text-white"
+                        data-lv-status="Pending" title="Filter: pending only"
+                        style="background:linear-gradient(135deg,#c9a227,#8f7318);">
                     <h3 th:text="${#numbers.formatDecimal(leaveMonthStats.pending, 0, 'COMMA', 0, 'POINT')}">0</h3>
+                    <div class="sub">Pending</div>
+                </button>
+            </div>
+            <div class="col-6 col-md-3">
+                <button type="button" class="eac-att-stat eac-att-stat--ok eac-lv-stat-filter h-100 w-100 border-0 text-white"
+                        data-lv-status="Approved" title="Filter: approved only">
+                    <h3 th:text="${#numbers.formatDecimal(leaveMonthStats.approved, 0, 'COMMA', 0, 'POINT')}">0</h3>
+                    <div class="sub">Approved</div>
+                </button>
+            </div>
+            <div class="col-6 col-md-3">
+                <button type="button" class="eac-att-stat eac-att-stat--abs eac-lv-stat-filter h-100 w-100 border-0 text-white"
+                        data-lv-status="Rejected" title="Filter: rejected only">
+                    <h3 th:text="${#numbers.formatDecimal(leaveMonthStats.rejected, 0, 'COMMA', 0, 'POINT')}">0</h3>
+                    <div class="sub">Rejected</div>
+                </button>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="eac-att-stat eac-att-stat--late eac-lv-stat-total h-100 text-white" title="Leave applications in this date range">
+                    <h3 th:text="${#numbers.formatDecimal(leaveMonthStats.total, 0, 'COMMA', 0, 'POINT')}">0</h3>
+                    <div class="sub">Total in range</div>
                 </div>
             </div>
         </div>
@@ -141,7 +152,6 @@
                 <table class="table table-sm table-hover align-middle mb-0" id="eacLvTable">
                     <thead class="table-light small text-uppercase text-muted" style="font-size:0.65rem;">
                     <tr>
-                        <th style="width:2rem"><input type="checkbox" class="form-check-input" disabled title="Reserved" aria-label="select all"></th>
                         <th>Employee</th>
                         <th>Leave type</th>
                         <th>From</th>
@@ -161,9 +171,8 @@
                                  data-lt=${r.leaveType},
                                  data-st=${r.status},
                                  data-srch=${#strings.toLowerCase(r.eacId + ' ' + r.employeeName + ' ' + r.leaveType + ' ' + r.status + ' ' + r.lastActionBy)}">
-                        <td><input type="checkbox" class="form-check-input" disabled aria-label="row"></td>
                         <td>
-                            <div class="fw-semibold" th:text="${r.employeeName}">—</div>
+                            <a th:href="@{/hr/attendance/record(id=${r.employeeId})}" class="fw-semibold text-decoration-none" th:text="${r.employeeName}">—</a>
                             <div class="small text-muted" th:text="${r.eacId}">—</div>
                         </td>
                         <td><span class="badge bg-light text-dark border" th:text="${r.leaveType}">—</span></td>
@@ -198,7 +207,7 @@
                         </td>
                     </tr>
                     <tr th:if="${leaveRows == null or #lists.isEmpty(leaveRows)}" class="eac-empty-row">
-                        <td colspan="10" class="eac-empty-cell">
+                        <td colspan="9" class="eac-empty-cell">
                             <i class="fas fa-calendar-xmark eac-empty-icon"></i>
                             <span class="eac-empty-text">No leave requests found for this range.</span>
                             <span class="eac-empty-text">Try adjusting the date range or status filter.</span>
@@ -282,10 +291,29 @@
         if (prev) prev.disabled = page <= 0;
         if (next) next.disabled = (start + ps >= L);
     }
+    function applyLvStatHighlight() {
+        document.querySelectorAll('.eac-lv-stat-filter').forEach(function (btn) {
+            var st = btn.getAttribute('data-lv-status') || '';
+            btn.classList.toggle('eac-lv-stat-active', fS && fS.value === st);
+        });
+    }
+    document.querySelectorAll('.eac-lv-stat-filter').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var st = btn.getAttribute('data-lv-status') || '';
+            if (!fS) return;
+            fS.value = (fS.value === st) ? '' : st;
+            page = 0;
+            run();
+            applyLvStatHighlight();
+        });
+    });
     document.addEventListener('DOMContentLoaded', function () {
+        var initialLvStatus = /*[[${statusFilter}]]*/ '';
+        if (initialLvStatus && fS) { fS.value = initialLvStatus; }
         rows().forEach(function (r) { r.classList.remove('d-none'); });
+        applyLvStatHighlight();
         run();
-        [fB,fD,fP,fS,fT,size].forEach(function (el) { if (el) el.addEventListener('change', function () { page = 0; run(); }); });
+        [fB,fD,fP,fS,fT,size].forEach(function (el) { if (el) el.addEventListener('change', function () { page = 0; run(); applyLvStatHighlight(); }); });
         if (q) q.addEventListener('input', function () { page = 0; run(); });
         if (prev) prev.addEventListener('click', function () { if (page > 0) { page--; run(); } });
         if (next) next.addEventListener('click', function () { page++; run(); });

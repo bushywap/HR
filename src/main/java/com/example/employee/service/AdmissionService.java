@@ -19,6 +19,7 @@ import com.example.employee.util.ListSearchUtil;
 import com.example.employee.util.PayrollDoleMath;
 import com.example.employee.util.PayrollPeriodUtil;
 import com.example.employee.util.PayrollDepartmentOptions;
+import com.example.employee.util.EacEmployeeIdUtil;
 import com.example.employee.model.SalaryAuditRow;
 import com.example.employee.model.EacDepartment;
 import com.example.employee.repository.ApplicantRepository;
@@ -469,15 +470,14 @@ public class AdmissionService {
         }
     }
 
-    public void hireApplicant(int id, String contractDate, String contractTime) {
+    public void hireApplicant(int id, String contractDate, String contractTime, String eacEmployeeId) {
         Optional<Applicant> result = repository.findById(id);
         if (result.isPresent()) {
             Applicant app = result.get();
             
             OfficialEmployee newEmp = new OfficialEmployee();
-            String officialId = generateEacEmployeeId(app);
-            
-            newEmp.setCustomEmployeeId(officialId);
+            String officialId = registerOfficialEmployeeId(eacEmployeeId);
+            newEmp.setId(officialId);
             newEmp.setFirstName(app.getFirstName());
             newEmp.setLastName(app.getLastName());
             newEmp.setEmail(app.getEmail());
@@ -556,8 +556,8 @@ public class AdmissionService {
     }
 
     public void addEmployeeManually(OfficialEmployee app) {
-        String officialId = generateEacEmployeeIdFallback(app);
-        app.setCustomEmployeeId(officialId);
+        String officialId = registerOfficialEmployeeId(app.getId());
+        app.setId(officialId);
         app.setStatus("Active"); 
         app.setDepartment(departmentCodeService.toCanonicalCode(app.getDepartment()));
         
@@ -586,7 +586,7 @@ public class AdmissionService {
      * Resets leave balances to standard policy for active employees in the given scope. Returns how many rows were updated.
      */
     @Transactional
-    public int resetLeaveCredits(LeaveCreditResetMode mode, String departmentCode, List<Long> employeeIds) {
+    public int resetLeaveCredits(LeaveCreditResetMode mode, String departmentCode, List<String> employeeIds) {
         final List<OfficialEmployee> targets = switch (mode) {
             case ALL -> {
                 List<OfficialEmployee> list = new ArrayList<>();
@@ -644,8 +644,7 @@ public class AdmissionService {
      * or up to {@code overdueGraceDays} in the past (still active — follow up).
      */
     public record EmploymentMilestoneAlert(
-        long employeeId,
-        String customEmployeeId,
+        String employeeId,
         String displayName,
         String milestoneKind,
         LocalDate eventDate,
@@ -685,16 +684,14 @@ public class AdmissionService {
         long days = ChronoUnit.DAYS.between(today, eventDate);
         if (days > 0 && !eventDate.isAfter(upcomingLimit)) {
             out.add(new EmploymentMilestoneAlert(
-                e.getId() != null ? e.getId() : 0L,
-                e.getCustomEmployeeId(),
+                e.getId(),
                 displayName,
                 kind,
                 eventDate,
                 days));
         } else if (days < 0 && days >= -overdueGraceDays) {
             out.add(new EmploymentMilestoneAlert(
-                e.getId() != null ? e.getId() : 0L,
-                e.getCustomEmployeeId(),
+                e.getId(),
                 displayName,
                 kind,
                 eventDate,
@@ -729,15 +726,11 @@ public class AdmissionService {
             .count();
         long tot = all.size();
         long ina = tot - act;
-        long maxId = all.stream().mapToLong(OfficialEmployee::getId).max().orElse(0L);
-        long newJ = 0L;
-        if (maxId > 0) {
-            long cut = Math.max(1L, maxId - 14L);
-            newJ = all.stream()
-                .filter(e -> e.getStatus() != null && "Active".equalsIgnoreCase(e.getStatus().trim()))
-                .filter(e -> e.getId() != null && e.getId() >= cut)
-                .count();
-        }
+        LocalDate newJoinerSince = LocalDate.now().minusDays(14);
+        long newJ = all.stream()
+            .filter(e -> e.getStatus() != null && "Active".equalsIgnoreCase(e.getStatus().trim()))
+            .filter(e -> e.getDateHired() != null && !e.getDateHired().isBefore(newJoinerSince))
+            .count();
         return new EmployeeListStats(tot, act, ina, newJ);
     }
 
@@ -898,7 +891,7 @@ public class AdmissionService {
 
         LocalDate today = LocalDate.now();
         for (OfficialEmployee emp : employees) {
-            Optional<AttendanceLog> log = attendanceRepository.findByEmployeeIdAndDate(String.valueOf(emp.getId()), today);
+            Optional<AttendanceLog> log = attendanceRepository.findByEmployeeIdAndDate(emp.getAttendanceEmployeeKey(), today);
             if (log.isEmpty()) {
                 emp.setTodayStatus("Absent");
             } else if (log.get().getTimeOut() == null) {
@@ -910,7 +903,7 @@ public class AdmissionService {
         return employees;
     }
 
-    public void updateEmployee(Long id, String department, String position, String status, Double dailyWage,
+    public void updateEmployee(String id, String department, String position, String status, Double dailyWage,
             Double basicSalary,
             int vlBalance, int slBalance, int mlBalance, int plBalance, int splBalance, int blBalance,
             int incentiveLeaveBalance, int studyLeaveBalance,
@@ -979,11 +972,11 @@ public class AdmissionService {
         }
     }
 
-    public void deleteEmployee(Long id) {
+    public void deleteEmployee(String id) {
         Optional<OfficialEmployee> opt = officialEmployeeRepository.findById(id);
         if (opt.isPresent()) {
             OfficialEmployee app = opt.get();
-            appUserRepository.findByUsername(app.getCustomEmployeeId()).ifPresent(user -> {
+            appUserRepository.findByUsername(app.getId()).ifPresent(user -> {
                 appUserRepository.delete(user);
             });
             officialEmployeeRepository.deleteById(id);
@@ -991,7 +984,7 @@ public class AdmissionService {
     }
 
     public String processBiometrics(String employeeId, String action) {
-        Optional<OfficialEmployee> optEmp = officialEmployeeRepository.findByCustomEmployeeId(employeeId);
+        Optional<OfficialEmployee> optEmp = officialEmployeeRepository.findById(employeeId);
         if (optEmp.isEmpty() || !"Active".equals(optEmp.get().getStatus())) {
             return "Error: Invalid or Inactive Employee ID.";
         }
@@ -1002,10 +995,10 @@ public class AdmissionService {
 
         try {
             if ("TIME_IN".equalsIgnoreCase(action)) {
-                jdbcTemplate.update("CALL SP_RecordTimeIn(?, ?, ?)", String.valueOf(emp.getId()), now, today);
+                jdbcTemplate.update("CALL SP_RecordTimeIn(?, ?, ?)", emp.getAttendanceEmployeeKey(), now, today);
                 return "Time In successful for " + emp.getFirstName();
             } else if ("TIME_OUT".equalsIgnoreCase(action)) {
-                jdbcTemplate.update("CALL SP_RecordTimeOut(?, ?, ?)", String.valueOf(emp.getId()), now, today);
+                jdbcTemplate.update("CALL SP_RecordTimeOut(?, ?, ?)", emp.getAttendanceEmployeeKey(), now, today);
                 return "Time Out successful for " + emp.getFirstName();
             } else {
                 return "Error: Invalid action.";
@@ -1028,7 +1021,7 @@ public class AdmissionService {
     }
 
     public String processLeaveRequest(LeaveRequest req) {
-        Optional<OfficialEmployee> optEmp = officialEmployeeRepository.findById((long)req.getEmployeeId());
+        Optional<OfficialEmployee> optEmp = officialEmployeeRepository.findById(req.getEmployeeId());
         if (optEmp.isEmpty() || !"Active".equals(optEmp.get().getStatus())) {
             return "Error: Invalid or Inactive Employee ID.";
         }
@@ -1051,32 +1044,21 @@ public class AdmissionService {
         return "Leave Request Submitted Successfully! Awaiting HR Approval.";
     }
 
-    public record LeaveMonthStats(long approved, long rejected, long pending) {}
+    public record LeaveMonthStats(long approved, long rejected, long pending, long total) {}
 
     public LeaveMonthStats getLeaveStatsForMonth(YearMonth ym) {
-        LocalDate a = ym.atDay(1);
-        LocalDate b = ym.atEndOfMonth();
-        List<LeaveRequest> list = leaveRequestRepository.findOverlappingDateRange(a, b);
-        long ap = 0, rj = 0, pe = 0;
-        for (LeaveRequest r : list) {
-            String s = r.getStatus() != null ? r.getStatus().trim() : "";
-            if ("APPROVED".equalsIgnoreCase(s)) {
-                ap++;
-            } else if ("REJECTED".equalsIgnoreCase(s)) {
-                rj++;
-            } else if ("PENDING".equalsIgnoreCase(s)) {
-                pe++;
-            }
-        }
-        return new LeaveMonthStats(ap, rj, pe);
+        return getLeaveStatsForDateRange(ym.atDay(1), ym.atEndOfMonth());
     }
 
-    public LeaveMonthStats getLeaveStatsForEmployeeMonth(int employeeId, YearMonth ym) {
-        LocalDate a = ym.atDay(1);
-        LocalDate b = ym.atEndOfMonth();
-        List<LeaveRequest> list = leaveRequestRepository.findByEmployeeIdOverlapping(employeeId, a, b);
+    public LeaveMonthStats getLeaveStatsForDateRange(LocalDate from, LocalDate to) {
+        if (from == null || to == null || from.isAfter(to)) {
+            return new LeaveMonthStats(0, 0, 0, 0);
+        }
         long ap = 0, rj = 0, pe = 0;
-        for (LeaveRequest r : list) {
+        for (LeaveRequest r : leaveRequestRepository.findOverlappingDateRange(from, to)) {
+            if (officialEmployeeRepository.findById(r.getEmployeeId()).isEmpty()) {
+                continue;
+            }
             String s = r.getStatus() != null ? r.getStatus().trim() : "";
             if ("APPROVED".equalsIgnoreCase(s)) {
                 ap++;
@@ -1086,7 +1068,29 @@ public class AdmissionService {
                 pe++;
             }
         }
-        return new LeaveMonthStats(ap, rj, pe);
+        return new LeaveMonthStats(ap, rj, pe, ap + rj + pe);
+    }
+
+    public LeaveMonthStats getLeaveStatsForEmployeeMonth(String employeeId, YearMonth ym) {
+        return getLeaveStatsForEmployeeDateRange(employeeId, ym.atDay(1), ym.atEndOfMonth());
+    }
+
+    public LeaveMonthStats getLeaveStatsForEmployeeDateRange(String employeeId, LocalDate from, LocalDate to) {
+        if (employeeId == null || employeeId.isBlank() || from == null || to == null || from.isAfter(to)) {
+            return new LeaveMonthStats(0, 0, 0, 0);
+        }
+        long ap = 0, rj = 0, pe = 0;
+        for (LeaveRequest r : leaveRequestRepository.findByEmployeeIdOverlapping(employeeId, from, to)) {
+            String s = r.getStatus() != null ? r.getStatus().trim() : "";
+            if ("APPROVED".equalsIgnoreCase(s)) {
+                ap++;
+            } else if ("REJECTED".equalsIgnoreCase(s)) {
+                rj++;
+            } else if ("PENDING".equalsIgnoreCase(s)) {
+                pe++;
+            }
+        }
+        return new LeaveMonthStats(ap, rj, pe, ap + rj + pe);
     }
 
     public List<LeaveRequestDisplayRow> buildAdminLeaveList(LocalDate from, LocalDate to) {
@@ -1095,7 +1099,7 @@ public class AdmissionService {
         }
         List<LeaveRequestDisplayRow> rows = new ArrayList<>();
         for (LeaveRequest req : leaveRequestRepository.findOverlappingDateRange(from, to)) {
-            Optional<OfficialEmployee> op = officialEmployeeRepository.findById((long) req.getEmployeeId());
+            Optional<OfficialEmployee> op = officialEmployeeRepository.findById(req.getEmployeeId());
             if (op.isEmpty()) {
                 continue;
             }
@@ -1104,13 +1108,13 @@ public class AdmissionService {
         return rows;
     }
 
-    public List<LeaveRequestDisplayRow> buildEmployeeLeaveList(int employeeId, LocalDate from, LocalDate to) {
+    public List<LeaveRequestDisplayRow> buildEmployeeLeaveList(String employeeId, LocalDate from, LocalDate to) {
         if (from == null || to == null || from.isAfter(to)) {
             return List.of();
         }
         List<LeaveRequestDisplayRow> rows = new ArrayList<>();
         for (LeaveRequest req : leaveRequestRepository.findByEmployeeIdOverlapping(employeeId, from, to)) {
-            Optional<OfficialEmployee> op = officialEmployeeRepository.findById((long) req.getEmployeeId());
+            Optional<OfficialEmployee> op = officialEmployeeRepository.findById(employeeId);
             if (op.isEmpty()) {
                 continue;
             }
@@ -1131,7 +1135,7 @@ public class AdmissionService {
         return new LeaveRequestDisplayRow(
             req.getId(),
             emp.getId(),
-            emp.getCustomEmployeeId() != null ? emp.getCustomEmployeeId() : "",
+            emp.getId() != null ? emp.getId() : "",
             emp.getFirstName() + " " + emp.getLastName(),
             emp.getDepartment() != null ? emp.getDepartment() : "—",
             emp.getPosition() != null ? emp.getPosition() : "—",
@@ -1178,9 +1182,9 @@ public class AdmissionService {
             return all;
         }
         return all.stream().filter(req -> {
-            Optional<OfficialEmployee> op = officialEmployeeRepository.findById((long) req.getEmployeeId());
+            Optional<OfficialEmployee> op = officialEmployeeRepository.findById(req.getEmployeeId());
             String name = op.map(e -> e.getFirstName() + " " + e.getLastName()).orElse("");
-            String cid = op.map(OfficialEmployee::getCustomEmployeeId).orElse("");
+            String cid = op.map(OfficialEmployee::getId).orElse("");
             String hay = ListSearchUtil.buildHaystack(
                 String.valueOf(req.getId()),
                 String.valueOf(req.getEmployeeId()),
@@ -1215,7 +1219,7 @@ public class AdmissionService {
         req.setNextApprover("—");
         leaveRequestRepository.save(req);
 
-        OfficialEmployee emp = officialEmployeeRepository.findById((long) req.getEmployeeId()).orElse(null);
+        OfficialEmployee emp = officialEmployeeRepository.findById(req.getEmployeeId()).orElse(null);
             if (emp != null) {
                 int days = (int) ChronoUnit.DAYS.between(req.getStartDate(), req.getEndDate()) + 1;
                 
@@ -1231,10 +1235,10 @@ public class AdmissionService {
 
                 LocalDate currentDate = req.getStartDate();
                 while (!currentDate.isAfter(req.getEndDate())) {
-                    Optional<AttendanceLog> existingLogOpt = attendanceRepository.findByEmployeeIdAndDate(String.valueOf(emp.getId()), currentDate);
+                    Optional<AttendanceLog> existingLogOpt = attendanceRepository.findByEmployeeIdAndDate(emp.getAttendanceEmployeeKey(), currentDate);
                     AttendanceLog paidLeaveLog = existingLogOpt.orElse(new AttendanceLog());
 
-                    paidLeaveLog.setEmployeeId(String.valueOf(emp.getId()));
+                    paidLeaveLog.setEmployeeId(emp.getAttendanceEmployeeKey());
                     paidLeaveLog.setDate(currentDate);
                     paidLeaveLog.setTimeIn(LocalTime.of(8, 0)); 
                     paidLeaveLog.setTimeOut(LocalTime.of(17, 0));
@@ -1257,7 +1261,7 @@ public class AdmissionService {
         }
         recordHrAudit(by, "LEAVE_APPROVED", "LeaveRequest", (long) leaveId,
             "type=" + req.getLeaveType() + " empId=" + req.getEmployeeId()
-                + (emp != null ? " " + emp.getCustomEmployeeId() : ""));
+                + (emp != null ? " " + emp.getId() : ""));
     }
 
     public void rejectLeave(int leaveId) {
@@ -1279,7 +1283,7 @@ public class AdmissionService {
         req.setDecidedAt(LocalDateTime.now());
         req.setNextApprover("—");
         leaveRequestRepository.save(req);
-        OfficialEmployee remp = officialEmployeeRepository.findById((long) req.getEmployeeId()).orElse(null);
+        OfficialEmployee remp = officialEmployeeRepository.findById(req.getEmployeeId()).orElse(null);
         if (remp != null && remp.getEmail() != null && !remp.getEmail().isBlank()) {
             sendEmail(remp.getEmail(),
                 "EAC HR: Leave request not approved",
@@ -1289,7 +1293,7 @@ public class AdmissionService {
         }
         recordHrAudit(by, "LEAVE_REJECTED", "LeaveRequest", (long) leaveId,
             "type=" + req.getLeaveType() + " empId=" + req.getEmployeeId()
-                + (remp != null ? " " + remp.getCustomEmployeeId() : ""));
+                + (remp != null ? " " + remp.getId() : ""));
     }
 
     public java.util.Map<String, String> getRecentCutoffPeriods(int numberOfPeriods) {
@@ -1390,6 +1394,17 @@ public class AdmissionService {
         hrAuditEventRepository.save(e);
     }
 
+    /** Audit entry when the entity key is an EAC employee id (e.g. {@code 1-00001}), not a numeric row id. */
+    @Transactional
+    public void recordHrAudit(String actorUsername, String action, String entityType, String entityKey, String detail) {
+        String d = detail;
+        if (entityKey != null && !entityKey.isBlank()) {
+            String prefix = "entity=" + entityKey.trim();
+            d = (d != null && !d.isBlank()) ? (prefix + "; " + d) : prefix;
+        }
+        recordHrAudit(actorUsername, action, entityType, (Long) null, d);
+    }
+
     public java.util.List<HrAuditEvent> listRecentHrAuditEvents(int maxRows) {
         int n = Math.min(Math.max(maxRows, 1), 500);
         return hrAuditEventRepository.findByOrderByIdDesc(PageRequest.of(0, n));
@@ -1482,8 +1497,8 @@ public class AdmissionService {
                 consistency = "— (no admin_pay to cross-check from daily_wage)";
             }
             out.add(new SalaryAuditRow(
-                emp.getId() != null ? emp.getId() : 0L,
-                emp.getCustomEmployeeId() != null ? emp.getCustomEmployeeId() : "",
+                0L,
+                emp.getId() != null ? emp.getId() : "",
                 ((emp.getFirstName() != null ? emp.getFirstName() : "")
                     + " " + (emp.getLastName() != null ? emp.getLastName() : "")).trim(),
                 emp.getDepartment() != null ? emp.getDepartment() : "",
@@ -1521,6 +1536,26 @@ public class AdmissionService {
         return l.contains("part") || l.contains("flexi");
     }
 
+    /** Active employees with attendance totals for a pay window (HR biometrics / DTR — no payroll SP). */
+    public List<OfficialEmployee> listEmployeesWithAttendanceForPeriod(String cutoffCode, String search) {
+        List<OfficialEmployee> activeEmployees = (List<OfficialEmployee>) officialEmployeeRepository.findByStatus("Active");
+        if (ListSearchUtil.isActiveKeyword(search)) {
+            activeEmployees = activeEmployees.stream()
+                .filter(e -> ListSearchUtil.matchesEmployee(e, search))
+                .toList();
+        }
+        PayrollPeriodUtil.PayrollPeriod pr = PayrollPeriodUtil.resolve(cutoffCode);
+        LocalDate startDate = pr.start();
+        LocalDate endDate = pr.end();
+        for (OfficialEmployee emp : activeEmployees) {
+            String empIdStr = emp.getAttendanceEmployeeKey();
+            PayrollAttendanceAggregate att = aggregateAttendanceForPayroll(empIdStr, startDate, endDate);
+            emp.setTotalHours(att.totalHoursWorked);
+            emp.setOtHours(att.otHours);
+        }
+        return activeEmployees;
+    }
+
     public List<OfficialEmployee> getPayrollData(String cutoffCode) {
         return getPayrollData(cutoffCode, null);
     }
@@ -1552,14 +1587,14 @@ public class AdmissionService {
             double teachingPayTotal = sumTeachingPayForPeriod(emp.getId(), startDate, endDate);
             int absentDays = 0;
 
-            String empIdStr = String.valueOf(emp.getId());
+            String empIdStr = emp.getAttendanceEmployeeKey();
             PayrollAttendanceAggregate att = aggregateAttendanceForPayroll(empIdStr, startDate, endDate);
             int lateMins = att.lateMins;
             int utMins = att.utMins;
             double otHours = att.otHours;
             double totalHoursWorked = att.totalHoursWorked;
 
-            LeaveDaySplit leaveSplit = sumLeaveDaysForPeriod(emp.getId().intValue(), startDate, endDate);
+            LeaveDaySplit leaveSplit = sumLeaveDaysForPeriod(emp.getId(), startDate, endDate);
             int leaveWithPayDays = leaveSplit.withPay;
             int leaveWithoutPayDays = leaveSplit.withoutPay;
 
@@ -1635,7 +1670,7 @@ public class AdmissionService {
      * {@code SP_ProcessRegularPayroll} ({@code payroll.sql} <code>teaching_pay</code> table: {@code period_start},
      * {@code period_end}).
      */
-    private double sumTeachingPayForPeriod(long employeeId, LocalDate periodStart, LocalDate periodEnd) {
+    private double sumTeachingPayForPeriod(String employeeId, LocalDate periodStart, LocalDate periodEnd) {
         try {
             String sql = "SELECT COALESCE(SUM(COALESCE(total_teaching_pay, 0)), 0) AS t "
                        + "FROM teaching_pay "
@@ -1660,7 +1695,7 @@ public class AdmissionService {
      * Linked by email to {@code employee}; classify by {@code loan_type} keywords; excludes rejected-like statuses.
      * Returns [sssLoan, hdmfLoan] amounts (per-period amounts as stored in loan rows).
      */
-    private double[] sumActiveLoansSssHdmf(long employeeId) {
+    private double[] sumActiveLoansSssHdmf(String employeeId) {
         double[] out = {0.0, 0.0};
         try {
             String sql = "SELECT "
@@ -1722,7 +1757,7 @@ public class AdmissionService {
 
     private record LeaveDaySplit(int withPay, int withoutPay) {}
 
-    private LeaveDaySplit sumLeaveDaysForPeriod(int employeeId, LocalDate periodStart, LocalDate periodEnd) {
+    private LeaveDaySplit sumLeaveDaysForPeriod(String employeeId, LocalDate periodStart, LocalDate periodEnd) {
         int withPay = 0;
         int withoutPay = 0;
         for (LeaveRequest req : leaveRequestRepository.findByEmployeeIdOrderByIdDesc(employeeId)) {
@@ -1746,10 +1781,13 @@ public class AdmissionService {
         return (int) ChronoUnit.DAYS.between(s, e) + 1;
     }
 
-    public void exportPayslipToPDF(int employeeId, String cutoffCode, HttpServletResponse response) {
+    public void exportPayslipToPDF(String employeeId, String cutoffCode, HttpServletResponse response) {
         try {
             String code = (cutoffCode != null && !cutoffCode.isEmpty()) ? cutoffCode : null;
-            OfficialEmployee emp = getPayrollData(code).stream().filter(a -> a.getId() == employeeId).findFirst().orElse(null);
+            OfficialEmployee emp = getPayrollData(code).stream()
+                .filter(a -> employeeId != null && employeeId.equals(a.getId()))
+                .findFirst()
+                .orElse(null);
             if (emp == null) return;
             
             Document document = new Document(PageSize.A4);
@@ -1778,7 +1816,7 @@ public class AdmissionService {
             infoTable.setSpacingAfter(20f);
             
             infoTable.addCell(createCell("Employee ID:", boldFont, false));
-            infoTable.addCell(createCell(emp.getCustomEmployeeId(), normalFont, false));
+            infoTable.addCell(createCell(emp.getId(), normalFont, false));
             infoTable.addCell(createCell("Department:", boldFont, false));
             infoTable.addCell(createCell(emp.getDepartment(), normalFont, false));
             
@@ -1833,11 +1871,11 @@ public class AdmissionService {
         } catch (Exception e) { System.err.println("PDF Error: " + e.getMessage()); }
     }
 
-    public List<AttendanceLog> getEmployeeAttendanceHistory(int employeeId) {
-        return attendanceRepository.findByEmployeeIdOrderByDateDesc(String.valueOf(employeeId));
+    public List<AttendanceLog> getEmployeeAttendanceHistory(String employeeId) {
+        return attendanceRepository.findByEmployeeIdOrderByDateDesc(employeeId);
     }
 
-    public List<DtrDayRow> buildDtrRows(int employeeId, LocalDate from, LocalDate to) {
+    public List<DtrDayRow> buildDtrRows(String employeeId, LocalDate from, LocalDate to) {
         if (from == null || to == null || from.isAfter(to)) {
             return List.of();
         }
@@ -1920,7 +1958,7 @@ public class AdmissionService {
         officialEmployeeRepository.save(emp);
     }
 
-    public List<AttendanceLog> getEmployeeAttendanceHistoryByCutoff(int employeeId, String cutoffCode) {
+    public List<AttendanceLog> getEmployeeAttendanceHistoryByCutoff(String employeeId, String cutoffCode) {
         List<AttendanceLog> allLogs = getEmployeeAttendanceHistory(employeeId);
         LocalDate[] range = resolveCutoffRange(cutoffCode);
         LocalDate startDate = range[0];
@@ -1961,7 +1999,7 @@ public class AdmissionService {
         return getCurrentPayrollCutoffKey();
     }
 
-    public List<AttendanceLog> getEmployeeOvertimeReviewLines(int employeeId, String cutoffCode) {
+    public List<AttendanceLog> getEmployeeOvertimeReviewLines(String employeeId, String cutoffCode) {
         LocalDate[] r = resolveCutoffRange(cutoffCode);
         return attendanceRepository.findOvertimeReviewLinesForEmployee(String.valueOf(employeeId), r[0], r[1]);
     }
@@ -1971,13 +2009,11 @@ public class AdmissionService {
         List<AttendanceLog> logs = attendanceRepository.findPendingOvertimeBetween(r[0], r[1]);
         List<OvertimeApprovalListItem> items = new ArrayList<>();
         for (AttendanceLog log : logs) {
-            long eid;
-            try {
-                eid = Long.parseLong(log.getEmployeeId());
-            } catch (NumberFormatException ex) {
+            String eid = log.getEmployeeId();
+            if (eid == null || eid.isBlank()) {
                 continue;
             }
-            Optional<OfficialEmployee> op = officialEmployeeRepository.findById(eid);
+            Optional<OfficialEmployee> op = officialEmployeeRepository.findById(eid.trim());
             if (op.isEmpty()) {
                 continue;
             }
@@ -1985,8 +2021,7 @@ public class AdmissionService {
             int rep = log.getOvertimeReported() != null ? log.getOvertimeReported() : 0;
             OvertimeApprovalListItem row = new OvertimeApprovalListItem(
                 log.getId(),
-                eid,
-                emp.getCustomEmployeeId(),
+                emp.getId(),
                 emp.getFirstName() + " " + emp.getLastName(),
                 log.getDate(),
                 rep,
@@ -1999,7 +2034,7 @@ public class AdmissionService {
         }
         return items.stream().filter(row -> {
             String hay = ListSearchUtil.buildHaystack(
-                row.getCustomEmployeeId(),
+                row.getEmployeeId(),
                 row.getEmployeeName(),
                 String.valueOf(row.getWorkDate()),
                 String.valueOf(row.getReportedOtHours()),
@@ -2030,9 +2065,9 @@ public class AdmissionService {
         attendanceRepository.save(log);
     }
 
-    public void exportDTRToPDF(int employeeId, String cutoffCode, HttpServletResponse response) {
+    public void exportDTRToPDF(String employeeId, String cutoffCode, HttpServletResponse response) {
         try {
-            OfficialEmployee emp = officialEmployeeRepository.findById((long) employeeId).orElse(null);
+            OfficialEmployee emp = officialEmployeeRepository.findById(employeeId).orElse(null);
             if (emp == null) return;
 
             List<AttendanceLog> cutoffLogs = getEmployeeAttendanceHistoryByCutoff(employeeId, cutoffCode);
@@ -2065,7 +2100,7 @@ public class AdmissionService {
             infoTable.setWidthPercentage(100);
             infoTable.setSpacingAfter(15f);
             infoTable.addCell(createCell("Employee ID:", boldFont, false));
-            infoTable.addCell(createCell(emp.getCustomEmployeeId(), normalFont, false));
+            infoTable.addCell(createCell(emp.getId(), normalFont, false));
             infoTable.addCell(createCell("Cutoff Period:", boldFont, false));
             infoTable.addCell(createCell(startDate + " to " + endDate, normalFont, false));
             infoTable.addCell(createCell("Name:", boldFont, false));
@@ -2199,7 +2234,7 @@ public class AdmissionService {
                     continue;
                 }
 
-                Optional<OfficialEmployee> optEmp = officialEmployeeRepository.findByCustomEmployeeId(officialEmpIdStr);
+                Optional<OfficialEmployee> optEmp = officialEmployeeRepository.findById(officialEmpIdStr);
                 if (optEmp.isEmpty()) {
                     skippedUnknownEmployee++;
                     continue;
@@ -2212,8 +2247,6 @@ public class AdmissionService {
                     officialEmployeeRepository.save(emp);
                 }
 
-                long internalDbId = emp.getId();
-
                 String dateStr = data[TCMS_COL_DATE].trim();
                 String timeInStr = data[TCMS_COL_IN].trim();
                 String timeOutStr = data[TCMS_COL_OUT].trim();
@@ -2225,10 +2258,11 @@ public class AdmissionService {
                 LocalTime timeIn = parseBiometricCsvTime(timeInStr);
                 LocalTime timeOut = parseBiometricCsvTime(timeOutStr);
 
-                Optional<AttendanceLog> existingLogOpt = attendanceRepository.findByEmployeeIdAndDate(String.valueOf(internalDbId), logDate);
+                String attendanceKey = emp.getAttendanceEmployeeKey();
+                Optional<AttendanceLog> existingLogOpt = attendanceRepository.findByEmployeeIdAndDate(attendanceKey, logDate);
                 AttendanceLog log = existingLogOpt.orElse(new AttendanceLog());
 
-                log.setEmployeeId(String.valueOf(internalDbId));
+                log.setEmployeeId(attendanceKey);
                 log.setDate(logDate);
 
                 EffectiveShiftRule effectiveShift = resolveEffectiveShiftForDate(emp, logDate);
@@ -2403,13 +2437,11 @@ public class AdmissionService {
         List<AttendanceLog> logs = attendanceRepository.findByDateRange(from, to);
         List<AdminAttendanceLogRow> rows = new ArrayList<>();
         for (AttendanceLog log : logs) {
-            long internalId;
-            try {
-                internalId = Long.parseLong(log.getEmployeeId());
-            } catch (Exception e) {
+            String internalId = log.getEmployeeId();
+            if (internalId == null || internalId.isBlank()) {
                 continue;
             }
-            Optional<OfficialEmployee> op = officialEmployeeRepository.findById(internalId);
+            Optional<OfficialEmployee> op = officialEmployeeRepository.findById(internalId.trim());
             if (op.isEmpty()) {
                 continue;
             }
@@ -2427,7 +2459,7 @@ public class AdmissionService {
             String campusLabel = !cc.isEmpty() ? "Campus " + cc : "—";
             rows.add(new AdminAttendanceLogRow(
                 log.getId(), internalId,
-                emp.getCustomEmployeeId() != null ? emp.getCustomEmployeeId() : "",
+                emp.getId() != null ? emp.getId() : "",
                 emp.getFirstName() + " " + emp.getLastName(),
                 emp.getDepartment() != null ? emp.getDepartment() : "—",
                 emp.getPosition() != null ? emp.getPosition() : "—",
@@ -2445,7 +2477,7 @@ public class AdmissionService {
         if (emp == null || emp.getId() == null || workDate == null) {
             return "—";
         }
-        Optional<ShiftAssignment> maybe = shiftAssignmentRepository.findByEmployeeIdAndWorkDate(emp.getId(), workDate);
+        Optional<ShiftAssignment> maybe = shiftAssignmentRepository.findByEmployee_IdAndWorkDate(emp.getId(), workDate);
         if (maybe.isPresent()) {
             ShiftAssignment a = maybe.get();
             String base = (a.getShift() != null && a.getShift().getName() != null && !a.getShift().getName().isBlank())
@@ -2485,7 +2517,7 @@ public class AdmissionService {
         if (emp == null || emp.getId() == null || workDate == null) {
             return new EffectiveShiftRule(defaultIn, defaultOut, 0, defaultBreak, 0, true, false, false, null, null, 0, false, "REVIEW_REQUIRED");
         }
-        Optional<ShiftAssignment> maybe = shiftAssignmentRepository.findByEmployeeIdAndWorkDate(emp.getId(), workDate);
+        Optional<ShiftAssignment> maybe = shiftAssignmentRepository.findByEmployee_IdAndWorkDate(emp.getId(), workDate);
         if (maybe.isEmpty()) {
             return new EffectiveShiftRule(defaultIn, defaultOut, 0, defaultBreak, 0, true, false, false, null, null, 0, false, "REVIEW_REQUIRED");
         }
@@ -2554,9 +2586,8 @@ public class AdmissionService {
         return "Present";
     }
 
-    public Optional<AttendanceLog> findAttendanceLogForToday(int internalEmployeeId) {
-        return attendanceRepository.findByEmployeeIdAndDate(
-            String.valueOf(internalEmployeeId), LocalDate.now());
+    public Optional<AttendanceLog> findAttendanceLogForToday(String employeeId) {
+        return attendanceRepository.findByEmployeeIdAndDate(employeeId, LocalDate.now());
     }
 
     public EmployeeStatSummary buildEmployeeAttendanceStats(OfficialEmployee emp) {
@@ -2566,14 +2597,14 @@ public class AdmissionService {
         LocalDate endMonth = today.withDayOfMonth(today.lengthOfMonth());
 
         List<AttendanceLog> monthLogs = attendanceRepository.findByDateRange(startMonth, endMonth).stream()
-            .filter(l -> String.valueOf(emp.getId()).equals(l.getEmployeeId()))
+            .filter(l -> emp.getAttendanceEmployeeKey().equals(l.getEmployeeId()))
             .toList();
 
         int todayH = monthLogs.stream().filter(l -> l.getDate().equals(today))
             .mapToInt(l -> l.getTotalHours() != null ? l.getTotalHours() : 0).sum();
 
         int weekH = attendanceRepository.findByDateRange(startWeek, today).stream()
-            .filter(l -> String.valueOf(emp.getId()).equals(l.getEmployeeId()))
+            .filter(l -> emp.getAttendanceEmployeeKey().equals(l.getEmployeeId()))
             .mapToInt(l -> l.getTotalHours() != null ? l.getTotalHours() : 0).sum();
 
         int monthH = monthLogs.stream()
@@ -2666,18 +2697,13 @@ public class AdmissionService {
         return fullLeaveType.length() > 32 ? fullLeaveType.substring(0, 32).trim() : fullLeaveType.trim();
     }
 
-    public String generateEacEmployeeId(Applicant emp) {
-        String campusPrefix = resolveCampusPrefix(emp.getDepartment());
-        long inCampus = officialEmployeeRepository.countByCustomEmployeeIdStartingWith(campusPrefix + "-");
-        String sequence = String.format("%05d", inCampus + 1);
-        return campusPrefix + "-" + sequence;
-    }
-
-    public String generateEacEmployeeIdFallback(OfficialEmployee emp) {
-        String campusPrefix = resolveCampusPrefix(emp.getDepartment());
-        long inCampus = officialEmployeeRepository.countByCustomEmployeeIdStartingWith(campusPrefix + "-");
-        String sequence = String.format("%05d", inCampus + 1);
-        return campusPrefix + "-" + sequence;
+    /** HR-assigned official id (e.g. 1-00001); validated and checked for duplicates. */
+    public String registerOfficialEmployeeId(String rawEacEmployeeId) {
+        String officialId = EacEmployeeIdUtil.requireValid(rawEacEmployeeId);
+        if (officialEmployeeRepository.findById(officialId).isPresent()) {
+            throw new IllegalArgumentException("EAC Employee ID is already assigned: " + officialId);
+        }
+        return officialId;
     }
 
     private static String resolveCampusPrefix(String department) {

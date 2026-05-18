@@ -13,9 +13,9 @@ public interface EacOvertimeRequestRepository extends JpaRepository<EacOvertimeR
     List<EacOvertimeRequest> findByWorkDateBetweenOrderByWorkDateDescIdDesc(LocalDate from, LocalDate to);
 
     List<EacOvertimeRequest> findByEmployeeIdAndWorkDateBetweenOrderByWorkDateDescIdDesc(
-        Long employeeId, LocalDate from, LocalDate to);
+        String employeeId, LocalDate from, LocalDate to);
 
     long countByStatusAndWorkDateBetween(String status, LocalDate from, LocalDate to);
 
-    long countByEmployeeIdAndStatusAndWorkDateBetween(Long employeeId, String status, LocalDate from, LocalDate to);
+    long countByEmployeeIdAndStatusAndWorkDateBetween(String employeeId, String status, LocalDate from, LocalDate to);
 }

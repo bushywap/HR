@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" class="split-page">
 <head>
     <th:block th:replace="~{fragments/head :: eacHead('Management Portal')}"></th:block>
@@ -21,7 +21,7 @@
             <p class="sl-eyebrow">HR &amp; Management</p>
             <h1>Manage people.<br><span>Drive results.</span></h1>
             <div class="sl-divider"></div>
-            <p class="sl-desc">Access dashboards, employee records, payroll, time data, and applicant pipelines — as your role allows.</p>
+            <p class="sl-desc">Access dashboards, employee records, time data, and applicant pipelines — as your role allows. Payroll is handled in the separate payroll application.</p>
         </div>
 
         <div class="sl-footer">
@@ -36,6 +36,7 @@
         <p class="sr-label">Management Access</p>
         <h2 class="sr-heading">Sign in</h2>
         <p class="sr-subheading">Use your system credentials.</p>
+        <p class="small text-muted mb-3">HR staff: use username <strong>admin</strong> or <strong>hr</strong> at this page (not your EAC employee id). Default passwords: <code>adminpassword</code> / <code>hrpassword</code> when accounts are first created.</p>
 
         <div th:if="${param.error}" class="sr-alert sr-alert-danger" role="alert">Invalid credentials. Please try again.</div>
         <div th:if="${param.logout}" class="sr-alert sr-alert-info" role="alert">You have been signed out.</div>

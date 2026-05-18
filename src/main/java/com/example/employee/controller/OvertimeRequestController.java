@@ -37,6 +37,7 @@ public class OvertimeRequestController {
     public String hrOvertime(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
+            @RequestParam(required = false) String statusFilter,
             Model model) {
         LocalDate today = LocalDate.now();
         if (dateFrom == null) {
@@ -52,8 +53,9 @@ public class OvertimeRequestController {
         }
         model.addAttribute("dateFrom", dateFrom);
         model.addAttribute("dateTo", dateTo);
+        model.addAttribute("statusFilter", normalizeOtStatusFilter(statusFilter));
         model.addAttribute("otRows", overtimeRequestService.buildAdminList(dateFrom, dateTo));
-        model.addAttribute("otMonthStats", overtimeRequestService.getStatsForMonth(YearMonth.from(today)));
+        model.addAttribute("otMonthStats", overtimeRequestService.getStatsForDateRange(dateFrom, dateTo));
         model.addAttribute("allDepartments", admissionService.getDistinctDepartments());
         model.addAttribute("allBranches", admissionService.getDistinctCampusCodes());
         List<String> des = new ArrayList<>();
@@ -110,7 +112,7 @@ public class OvertimeRequestController {
 
     @PostMapping("/hr/overtime/manual")
     public String adminManualOvertime(
-            @RequestParam long employeeId,
+            @RequestParam String employeeId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate workDate,
             @RequestParam int overtimeHours,
             @RequestParam(defaultValue = "REGULAR") String otType,
@@ -147,7 +149,7 @@ public class OvertimeRequestController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
             Principal principal,
             Model model) {
-        OfficialEmployee emp = officialEmployeeRepository.findByCustomEmployeeId(principal.getName()).orElse(null);
+        OfficialEmployee emp = officialEmployeeRepository.findById(principal.getName()).orElse(null);
         if (emp == null) {
             return "redirect:/employee-login";
         }
@@ -184,7 +186,7 @@ public class OvertimeRequestController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
             RedirectAttributes ra) {
-        OfficialEmployee emp = officialEmployeeRepository.findByCustomEmployeeId(principal.getName()).orElse(null);
+        OfficialEmployee emp = officialEmployeeRepository.findById(principal.getName()).orElse(null);
         if (emp == null) {
             return "redirect:/employee-login";
         }
@@ -207,5 +209,17 @@ public class OvertimeRequestController {
             .queryParam("dateTo", dateTo.toString())
             .build()
             .toUriString();
+    }
+
+    private static String normalizeOtStatusFilter(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return "";
+        }
+        return switch (raw.trim().toUpperCase()) {
+            case "PENDING" -> "Pending";
+            case "APPROVED" -> "Approved";
+            case "REJECTED" -> "Rejected";
+            default -> "";
+        };
     }
 }

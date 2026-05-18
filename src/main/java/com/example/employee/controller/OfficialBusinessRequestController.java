@@ -38,10 +38,11 @@ public class OfficialBusinessRequestController {
     public String hrOfficialBusiness(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
+            @RequestParam(required = false) String statusFilter,
             Model model) {
         LocalDate today = LocalDate.now();
         if (dateFrom == null) {
-            dateFrom = today.withDayOfYear(1);
+            dateFrom = today.withDayOfMonth(1);
         }
         if (dateTo == null) {
             dateTo = today;
@@ -53,8 +54,9 @@ public class OfficialBusinessRequestController {
         }
         model.addAttribute("dateFrom", dateFrom);
         model.addAttribute("dateTo", dateTo);
+        model.addAttribute("statusFilter", normalizeObStatusFilter(statusFilter));
         model.addAttribute("obRows", officialBusinessService.buildAdminList(dateFrom, dateTo));
-        model.addAttribute("obMonthStats", officialBusinessService.getStatsForMonth(YearMonth.from(today)));
+        model.addAttribute("obMonthStats", officialBusinessService.getStatsForDateRange(dateFrom, dateTo));
         model.addAttribute("allDepartments", admissionService.getDistinctDepartments());
         model.addAttribute("allBranches", admissionService.getDistinctCampusCodes());
         List<String> des = new ArrayList<>();
@@ -106,7 +108,7 @@ public class OfficialBusinessRequestController {
 
     @PostMapping("/hr/official-business/manual")
     public String adminManual(
-            @RequestParam long employeeId,
+            @RequestParam String employeeId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate businessDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime startTime,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime endTime,
@@ -133,7 +135,7 @@ public class OfficialBusinessRequestController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
             Principal principal,
             Model model) {
-        OfficialEmployee emp = officialEmployeeRepository.findByCustomEmployeeId(principal.getName()).orElse(null);
+        OfficialEmployee emp = officialEmployeeRepository.findById(principal.getName()).orElse(null);
         if (emp == null) {
             return "redirect:/employee-login";
         }
@@ -170,7 +172,7 @@ public class OfficialBusinessRequestController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
             RedirectAttributes ra) {
-        OfficialEmployee emp = officialEmployeeRepository.findByCustomEmployeeId(principal.getName()).orElse(null);
+        OfficialEmployee emp = officialEmployeeRepository.findById(principal.getName()).orElse(null);
         if (emp == null) {
             return "redirect:/employee-login";
         }
@@ -199,5 +201,17 @@ public class OfficialBusinessRequestController {
             b.queryParam("dateTo", dateTo.toString());
         }
         return "redirect:" + b.build().toUriString();
+    }
+
+    private static String normalizeObStatusFilter(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return "";
+        }
+        return switch (raw.trim().toUpperCase()) {
+            case "PENDING" -> "Pending";
+            case "APPROVED" -> "Approved";
+            case "REJECTED" -> "Rejected";
+            default -> "";
+        };
     }
 }

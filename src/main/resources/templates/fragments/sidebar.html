@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <body>
 
@@ -127,33 +127,6 @@
                th:classappend="${activePage == 'suspensions'} ? ' eac-sidebar-link--active' : ''">
                 <span class="eac-sidebar-icon"><i class="fas fa-circle-pause"></i></span>
                 <span>Class Suspensions</span>
-            </a>
-        </li>
-
-        <!-- Finance -->
-        <li sec:authorize="hasAnyAuthority('ADMIN','HR','FINANCE')" class="nav-item eac-sidebar-finance-section">
-            <div class="eac-sidebar-section-label">
-                <i class="fas fa-peso-sign"></i> Finance
-            </div>
-            <a href="/hr/payroll" class="eac-sidebar-link"
-               th:classappend="${activePage == 'payroll'} ? ' eac-sidebar-link--active' : ''">
-                <span class="eac-sidebar-icon"><i class="fas fa-file-invoice-dollar"></i></span>
-                <span>Payroll</span>
-            </a>
-            <a href="/hr/salary-audit" class="eac-sidebar-link"
-               th:classappend="${activePage == 'salaryAudit'} ? ' eac-sidebar-link--active' : ''">
-                <span class="eac-sidebar-icon"><i class="fas fa-scale-balanced"></i></span>
-                <span>Salary Rules</span>
-            </a>
-            <a href="/hr/payroll-periods" class="eac-sidebar-link"
-               th:classappend="${activePage == 'payrollPeriods'} ? ' eac-sidebar-link--active' : ''">
-                <span class="eac-sidebar-icon"><i class="fas fa-calendar-check"></i></span>
-                <span>Pay Periods</span>
-            </a>
-            <a href="/hr/teaching-pay" class="eac-sidebar-link"
-               th:classappend="${activePage == 'teachingPay'} ? ' eac-sidebar-link--active' : ''">
-                <span class="eac-sidebar-icon"><i class="fas fa-chalkboard-user"></i></span>
-                <span>Teaching Pay</span>
             </a>
         </li>
 

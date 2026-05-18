@@ -960,11 +960,35 @@ body {
 
 /* ---- Attendance admin / employee dashboards ---- */
 .eac-att-stat { border-radius: 8px; border: none; padding: 0.7rem 1rem; color: #fff; min-height: 0; position: relative; box-shadow: 0 2px 8px rgba(0,0,0,0.10); }
-.eac-att-stat h3 { font-size: 1.3rem; font-weight: 800; margin: 0 0 0.1rem; }
-.eac-att-stat .sub { font-size: 0.66rem; opacity: 0.88; text-transform: uppercase; letter-spacing: 0.5px; }
+.eac-att-stat h3 { font-size: 1.3rem; font-weight: 800; margin: 0 0 0.1rem; color: inherit; background: transparent; }
+.eac-att-stat .sub { font-size: 0.66rem; opacity: 0.88; text-transform: uppercase; letter-spacing: 0.5px; color: inherit; }
 .eac-att-stat--ok    { background: linear-gradient(135deg, #2a8a4e 0%, #1c5c34 100%); }
 .eac-att-stat--late  { background: linear-gradient(135deg, #e4a23b 0%, #c87a1c 100%); }
 .eac-att-stat--abs   { background: linear-gradient(135deg, #c13d3d 0%, #8b2323 100%); }
+
+/* HR list pages: clickable stat cards + sticky table header */
+.eac-ob-stat-filter,
+.eac-lv-stat-filter,
+.eac-ot-stat-filter { cursor: pointer; text-align: left; transition: transform 0.12s ease, box-shadow 0.12s ease; }
+.eac-ob-stat-filter:hover,
+.eac-lv-stat-filter:hover,
+.eac-ot-stat-filter:hover { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(0,0,0,0.18); }
+.eac-ob-stat-filter:focus-visible,
+.eac-lv-stat-filter:focus-visible,
+.eac-ot-stat-filter:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.eac-ob-stat-filter.eac-ob-stat-active,
+.eac-lv-stat-filter.eac-lv-stat-active,
+.eac-ot-stat-filter.eac-ot-stat-active { box-shadow: 0 0 0 3px rgba(255,255,255,0.65); }
+.eac-ob-stat-total,
+.eac-lv-stat-total,
+.eac-ot-stat-total { cursor: default; }
+.eac-ob-stat-total h3,
+.eac-ob-stat-total .sub,
+.eac-lv-stat-total h3,
+.eac-lv-stat-total .sub,
+.eac-ot-stat-total h3,
+.eac-ot-stat-total .sub { user-select: none; }
+.eac-ob-table-wrap thead th { position: sticky; top: 0; z-index: 2; box-shadow: 0 1px 0 #dee2e6; }
 .eac-emp-att-clock { border-radius: 14px; border: 1px solid #e8ecec; }
 
 /* ---- Employee portal sidebar + DTR / payslip (neutral) ---- */

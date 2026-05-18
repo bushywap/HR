@@ -1,0 +1,22 @@
+Option A: Payroll app uses eac_hr_db (HR is source of truth)
+============================================================
+
+1. Payroll project changes (see ../payroll-system/ or your GitHub clone):
+   - application.properties -> jdbc:mysql://127.0.0.1:3306/eac_hr_db, password 7002, ddl-auto=none
+   - Employee entity: PK employee_id, badge custom_employee_id, status column
+   - Attendance lookups use numeric PK as string (getAttendanceKey())
+
+2. Optional SQL (Workbench): sql/payroll_option_a_leave_balances.sql
+
+3. Copy updated payroll-system files into your payroll Cursor project, or work from:
+   c:\Users\atash\Downloads\eac-hr\payroll-system
+
+4. Start order: XAMPP MySQL -> EAC HR -> Payroll app (context path /payroll-system)
+
+5. Do not re-import eacdb demo employees. Add staff in HR only; payroll reads the same rows.
+
+6. ID rules (prof format):
+   - employee.custom_employee_id = official EAC id (format 1-00001)
+   - HR types this on hire / F2F register (no auto-assign)
+   - attendance.employee_id = same string as custom_employee_id
+   - Run sql/align_attendance_to_eac_employee_id.sql once if old rows used numeric ids

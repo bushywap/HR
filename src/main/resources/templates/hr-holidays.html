@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <th:block th:replace="~{fragments/head :: eacHead('HR — Holidays')}"></th:block>
@@ -69,7 +69,7 @@
         <!-- Page header -->
         <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
             <div class="d-flex align-items-start gap-2">
-                <button id="sidebarToggle" class="btn-hamburger me-0 mt-1">☰</button>
+                <button id="sidebarToggle" class="btn-hamburger me-0 mt-1"><i class="fas fa-bars" aria-hidden="true"></i><span class="visually-hidden">Menu</span></button>
                 <div>
                     <h1 class="h4 fw-bold m-0" style="color:#1a2e2c;letter-spacing:-0.5px;">Official Holidays</h1>
                     <nav class="eac-empl-breadcrumb mt-1" aria-label="Breadcrumb">
@@ -98,7 +98,7 @@
 
         <div class="row g-3">
 
-            <!-- ── Calendar panel ── -->
+            <!-- Calendar panel -->
             <div class="col-lg-5">
                 <div class="card border-0 shadow-sm p-3 h-100">
                     <!-- Legend -->
@@ -116,7 +116,7 @@
                 </div>
             </div>
 
-            <!-- ── Table panel ── -->
+            <!-- Table panel -->
             <div class="col-lg-7">
                 <div class="card border-0 shadow-sm" style="overflow:hidden;">
 
@@ -198,7 +198,7 @@
     </div>
 </div>
 
-<!-- ── Add Holiday Modal ── -->
+<!-- Add Holiday Modal -->
 <div class="modal fade" id="addHolidayModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
         <div class="modal-content border-0 shadow-lg" style="border-radius:14px;overflow:hidden;">

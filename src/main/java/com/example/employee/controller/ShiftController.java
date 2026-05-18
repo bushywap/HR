@@ -23,8 +23,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
-import java.util.HashSet;
 import java.util.stream.Collectors;
 
 @Controller
@@ -62,13 +60,45 @@ public class ShiftController {
             shift.setGraceMinutes(0);
             shift.setMinimumMinutesForOt(60);
         }
-        if (shift.getId() == null) {
+        boolean isUpdate = shift.getId() != null;
+        ShiftSchedule toSave = shift;
+        if (isUpdate) {
+            toSave = shiftScheduleService.findById(shift.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Shift not found."));
+            applyShiftForm(toSave, shift);
+        } else {
             shift.setCreatedBy(username);
         }
-        shift.setUpdatedBy(username);
-        shiftScheduleService.save(shift);
-        ra.addFlashAttribute("okMessage", "Shift saved.");
+        toSave.setUpdatedBy(username);
+        shiftScheduleService.save(toSave);
+        ra.addFlashAttribute("okMessage", isUpdate ? "Shift updated." : "Shift saved.");
         return "redirect:/hr/shifts";
+    }
+
+    private static void applyShiftForm(ShiftSchedule target, ShiftSchedule form) {
+        target.setName(form.getName());
+        target.setBranchCode(form.getBranchCode());
+        target.setStartTime(form.getStartTime());
+        target.setEndTime(form.getEndTime());
+        target.setMaxAllowedHours(form.getMaxAllowedHours());
+        target.setGraceMinutes(form.getGraceMinutes());
+        target.setBreakMinutes(form.getBreakMinutes());
+        target.setAllowedMinutesBeforeClockIn(form.getAllowedMinutesBeforeClockIn());
+        target.setFlexibleHours(form.isFlexibleHours());
+        target.setFlexiInWindowStart(form.getFlexiInWindowStart());
+        target.setFlexiInWindowEnd(form.getFlexiInWindowEnd());
+        target.setRequiredNetWorkMinutes(form.getRequiredNetWorkMinutes());
+        target.setAllowExtraHours(form.isAllowExtraHours());
+        target.setRequireOtApproval(form.getRequireOtApproval());
+        target.setMissingPunchPolicy(form.getMissingPunchPolicy());
+        target.setNotes(form.getNotes());
+        target.setActive(form.isActive());
+        if (form.getMinimumMinutesForOt() != null) {
+            target.setMinimumMinutesForOt(form.getMinimumMinutesForOt());
+        }
+        if (form.getGraceMinutes() != null) {
+            target.setGraceMinutes(form.getGraceMinutes());
+        }
     }
 
     @PostMapping("/hr/shifts/archive")
@@ -95,19 +125,17 @@ public class ShiftController {
         List<ShiftAssignment> assignments = shiftAssignmentService.listByRange(start, end);
         Map<String, ShiftAssignment> assignmentMap = new LinkedHashMap<>();
         List<OfficialEmployee> allActiveEmployees = admissionService.getEmployees(null, null);
-        Map<Long, OfficialEmployee> employeeById = allActiveEmployees.stream()
+        Map<String, OfficialEmployee> employeeById = allActiveEmployees.stream()
             .collect(Collectors.toMap(OfficialEmployee::getId, e -> e, (a, b) -> a, LinkedHashMap::new));
-        Set<Long> visibleEmployeeIds = new HashSet<>();
         for (ShiftAssignment row : assignments) {
             OfficialEmployee emp = employeeById.get(row.getEmployee().getId());
             if (emp == null || !matchesFilters(emp, branch, department, designation, search)) {
                 continue;
             }
-            assignmentMap.put(row.getEmployee().getId() + "|" + row.getWorkDate(), row);
-            visibleEmployeeIds.add(row.getEmployee().getId());
+            assignmentMap.put(assignmentKey(row.getEmployee().getId(), row.getWorkDate()), row);
         }
         List<OfficialEmployee> visibleEmployees = allActiveEmployees.stream()
-            .filter(e -> visibleEmployeeIds.contains(e.getId()))
+            .filter(e -> matchesFilters(e, branch, department, designation, search))
             .sorted((a, b) -> (a.getLastName() + " " + a.getFirstName()).compareToIgnoreCase(b.getLastName() + " " + b.getFirstName()))
             .collect(Collectors.toList());
 
@@ -154,7 +182,7 @@ public class ShiftController {
         }
         if (search != null && !search.isBlank()) {
             String q = search.trim().toLowerCase();
-            String hay = ((e.getCustomEmployeeId() == null ? "" : e.getCustomEmployeeId()) + " "
+            String hay = ((e.getId() == null ? "" : e.getId()) + " "
                 + (e.getFirstName() == null ? "" : e.getFirstName()) + " "
                 + (e.getLastName() == null ? "" : e.getLastName()) + " "
                 + (e.getDepartment() == null ? "" : e.getDepartment())).toLowerCase();
@@ -163,9 +191,13 @@ public class ShiftController {
         return true;
     }
 
+    private static String assignmentKey(String employeeId, LocalDate workDate) {
+        return employeeId + "|" + workDate;
+    }
+
     @PostMapping("/hr/shift-management/assign")
     public String assignSingle(
-        @RequestParam("employeeId") Long employeeId,
+        @RequestParam("employeeId") String employeeId,
         @RequestParam("shiftId") Long shiftId,
         @RequestParam("workDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate workDate,
         @RequestParam(value = "source", required = false) String source,

@@ -8,8 +8,7 @@ import java.time.LocalDate;
 public class OvertimeApprovalListItem {
 
     private long attendanceId;
-    private long employeeInternalId;
-    private String customEmployeeId;
+    private String employeeId;
     private String employeeName;
     private LocalDate workDate;
     private int reportedOtHours;
@@ -17,11 +16,10 @@ public class OvertimeApprovalListItem {
 
     public OvertimeApprovalListItem() {}
 
-    public OvertimeApprovalListItem(long attendanceId, long employeeInternalId, String customEmployeeId, String employeeName,
+    public OvertimeApprovalListItem(long attendanceId, String employeeId, String employeeName,
                                     LocalDate workDate, int reportedOtHours, String biometricsStatus) {
         this.attendanceId = attendanceId;
-        this.employeeInternalId = employeeInternalId;
-        this.customEmployeeId = customEmployeeId;
+        this.employeeId = employeeId;
         this.employeeName = employeeName;
         this.workDate = workDate;
         this.reportedOtHours = reportedOtHours;
@@ -30,12 +28,8 @@ public class OvertimeApprovalListItem {
 
     public long getAttendanceId() { return attendanceId; }
     public void setAttendanceId(long attendanceId) { this.attendanceId = attendanceId; }
-    public long getEmployeeInternalId() { return employeeInternalId; }
-    public void setEmployeeInternalId(long employeeInternalId) { this.employeeInternalId = employeeInternalId; }
-    public long getEmployeeDbId() { return employeeInternalId; }
-    public void setEmployeeDbId(long employeeInternalId) { this.employeeInternalId = employeeInternalId; }
-    public String getCustomEmployeeId() { return customEmployeeId; }
-    public void setCustomEmployeeId(String customEmployeeId) { this.customEmployeeId = customEmployeeId; }
+    public String getEmployeeId() { return employeeId; }
+    public void setEmployeeId(String employeeId) { this.employeeId = employeeId; }
     public String getEmployeeName() { return employeeName; }
     public void setEmployeeName(String employeeName) { this.employeeName = employeeName; }
     public LocalDate getWorkDate() { return workDate; }

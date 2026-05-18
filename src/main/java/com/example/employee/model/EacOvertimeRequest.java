@@ -17,8 +17,8 @@ public class EacOvertimeRequest {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "employee_id", nullable = false)
-    private Long employeeId;
+    @Column(name = "employee_id", nullable = false, length = 20)
+    private String employeeId;
 
     @Column(name = "work_date", nullable = false)
     private LocalDate workDate;
@@ -65,8 +65,8 @@ public class EacOvertimeRequest {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-    public Long getEmployeeId() { return employeeId; }
-    public void setEmployeeId(Long employeeId) { this.employeeId = employeeId; }
+    public String getEmployeeId() { return employeeId; }
+    public void setEmployeeId(String employeeId) { this.employeeId = employeeId; }
     public LocalDate getWorkDate() { return workDate; }
     public void setWorkDate(LocalDate workDate) { this.workDate = workDate; }
     public LocalTime getStartTime() { return startTime; }

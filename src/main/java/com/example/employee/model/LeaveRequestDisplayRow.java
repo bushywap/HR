@@ -7,7 +7,7 @@ import java.time.LocalDate;
  */
 public record LeaveRequestDisplayRow(
     int requestId,
-    long employeeInternalId,
+    String employeeId,
     String eacId,
     String employeeName,
     String department,

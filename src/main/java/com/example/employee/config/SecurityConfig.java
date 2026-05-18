@@ -45,11 +45,9 @@ public class SecurityConfig {
                 // Leave credits reset: ADMIN/HR only (not FINANCE)
                 .requestMatchers("/hr/leave-credits/reset").hasAnyAuthority("ADMIN", "HR")
 
-                // Audit + saved pay presets: sensitive / operational — ADMIN/HR only (not FINANCE)
-                .requestMatchers("/hr/audit-log", "/hr/payroll-periods", "/hr/payroll-periods/**")
-                    .hasAnyAuthority("ADMIN", "HR")
+                .requestMatchers("/hr/audit-log").hasAnyAuthority("ADMIN", "HR")
 
-                .requestMatchers("/hr/**").hasAnyAuthority("ADMIN", "HR", "FINANCE")
+                .requestMatchers("/hr/**").hasAnyAuthority("ADMIN", "HR")
                 .requestMatchers("/employee/**").hasAuthority("EMPLOYEE")
                 .requestMatchers("/applicant/**").hasAuthority("APPLICANT")
                 
@@ -93,10 +91,9 @@ public class SecurityConfig {
             
             // 1. Identify Who They Are
         	// INSIDE your customAuthenticationSuccessHandler method...
-        	boolean isFinance = authentication.getAuthorities().stream().anyMatch(g -> g.getAuthority().equals("FINANCE"));
         	boolean isHR = authentication.getAuthorities().stream().anyMatch(g -> g.getAuthority().equals("HR"));
         	boolean isAdmin = authentication.getAuthorities().stream().anyMatch(g -> g.getAuthority().equals("ADMIN"));
-        	boolean isManagement = isFinance || isHR || isAdmin;
+        	boolean isManagement = isHR || isAdmin;
 
         	boolean isEmployee = authentication.getAuthorities().stream().anyMatch(g -> g.getAuthority().equals("EMPLOYEE"));
         	boolean isApplicant = authentication.getAuthorities().stream().anyMatch(g -> g.getAuthority().equals("APPLICANT"));
@@ -124,9 +121,7 @@ public class SecurityConfig {
             }
 
             // 4. Send Them to Their Specific Dashboard
-            if (isFinance) {
-                response.sendRedirect("/hr/payroll");
-            } else if (isManagement) {
+            if (isManagement) {
                 response.sendRedirect("/hr/dashboard");
             } else if (isEmployee) {
                 response.sendRedirect("/employee/dashboard");

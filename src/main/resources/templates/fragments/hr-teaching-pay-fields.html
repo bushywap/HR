@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <th:block th:fragment="fields">
     <h6 class="text-danger text-uppercase small fw-bold border-bottom pb-2 mb-3">Required for payroll (SP total)</h6>
@@ -7,7 +7,7 @@
             <label class="form-label small fw-bold">Employee <span class="text-danger">*</span></label>
             <select th:field="*{employeeId}" class="form-select" required>
                 <option th:each="emp : ${employees}" th:value="${emp.id}"
-                        th:text="${(emp.customEmployeeId != null ? emp.customEmployeeId : '') + ' — ' + (emp.firstName != null ? emp.firstName : '') + ' ' + (emp.lastName != null ? emp.lastName : '')}"></option>
+                        th:text="${(emp.id != null ? emp.id : '') + ' — ' + (emp.firstName != null ? emp.firstName : '') + ' ' + (emp.lastName != null ? emp.lastName : '')}"></option>
             </select>
         </div>
         <div class="col-6 col-md-3">

@@ -1,7 +1,7 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
-    <th:block th:replace="~{fragments/head :: eacHead('HR — Overtime')}"></th:block>
+    <th:block th:replace="~{fragments/head :: eacHead('HR - Overtime')}"></th:block>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body class="eac-surface min-vh-100">
@@ -10,7 +10,7 @@
     <div id="content" class="main-content eac-empl-page" style="background:#f5f7f7;">
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
             <div class="d-flex align-items-start gap-2">
-                <button type="button" id="sidebarToggle" class="btn-hamburger me-0 mt-1">☰</button>
+                <button type="button" id="sidebarToggle" class="btn-hamburger me-0 mt-1"><i class="fas fa-bars" aria-hidden="true"></i><span class="visually-hidden">Menu</span></button>
                 <div>
                     <h1 class="h4 fw-bold m-0" style="color:#1a2e2c;">Overtime</h1>
                     <nav class="eac-empl-breadcrumb mt-1" aria-label="Breadcrumb">
@@ -36,31 +36,36 @@
         <div th:if="${successMessage}" class="alert alert-success fw-bold shadow-sm" th:text="${successMessage}"></div>
         <div th:if="${errorMessage}" class="alert alert-danger fw-bold shadow-sm" th:text="${errorMessage}"></div>
 
-        <p class="small text-muted mb-3">TCMS / biometrics rows are approved here for payroll. <strong>EAC request</strong> rows are manual or employee-submitted. Photo column is N/A; attach files on manual entries.</p>
+        <p class="small text-muted mb-2">TCMS / biometrics rows are approved here for payroll. <strong>EAC request</strong> rows are manual or employee-submitted.</p>
+        <p class="small text-muted mb-3" th:if="${otMonthStats != null}">Summary for the selected date range. Click a card to filter the table; click again to clear.</p>
 
         <div class="row g-3 mb-3" th:if="${otMonthStats != null}">
             <div class="col-6 col-md-3">
-                <div class="eac-att-stat h-100" style="background:linear-gradient(135deg,#0d6e6a,#0a5250);">
+                <button type="button" class="eac-att-stat eac-ot-stat-filter h-100 w-100 border-0 text-white"
+                        data-ot-status="Pending" title="Filter: pending only"
+                        style="background:linear-gradient(135deg,#0d6e6a,#0a5250);">
                     <h3 th:text="${#numbers.formatDecimal(otMonthStats.pending, 0, 'COMMA', 0, 'POINT')}">0</h3>
-                    <div class="sub">Pending (this month)</div>
-                </div>
+                    <div class="sub">Pending</div>
+                </button>
             </div>
             <div class="col-6 col-md-3">
-                <div class="eac-att-stat eac-att-stat--ok h-100">
+                <button type="button" class="eac-att-stat eac-att-stat--ok eac-ot-stat-filter h-100 w-100 border-0 text-white"
+                        data-ot-status="Approved" title="Filter: approved only">
                     <h3 th:text="${#numbers.formatDecimal(otMonthStats.approved, 0, 'COMMA', 0, 'POINT')}">0</h3>
                     <div class="sub">Approved</div>
-                </div>
+                </button>
             </div>
             <div class="col-6 col-md-3">
-                <div class="eac-att-stat eac-att-stat--abs h-100">
+                <button type="button" class="eac-att-stat eac-att-stat--abs eac-ot-stat-filter h-100 w-100 border-0 text-white"
+                        data-ot-status="Rejected" title="Filter: rejected only">
                     <h3 th:text="${#numbers.formatDecimal(otMonthStats.rejected, 0, 'COMMA', 0, 'POINT')}">0</h3>
                     <div class="sub">Rejected</div>
-                </div>
+                </button>
             </div>
             <div class="col-6 col-md-3">
-                <div class="eac-att-stat eac-att-stat--late h-100">
+                <div class="eac-att-stat eac-att-stat--late eac-ot-stat-total h-100 text-white" title="All OT rows in this date range">
                     <h3 th:text="${#numbers.formatDecimal(otMonthStats.total, 0, 'COMMA', 0, 'POINT')}">0</h3>
-                    <div class="sub">All OT rows</div>
+                    <div class="sub">Total in range</div>
                 </div>
             </div>
         </div>
@@ -84,13 +89,13 @@
             <div class="col-6 col-md-4 col-lg-2" th:if="${allDepartments != null}">
                 <select class="form-select form-select-sm" id="eacOtFDept">
                     <option value="">All departments</option>
-                    <option th:each="d : ${allDepartments}" th:value="${d}" th:text="${d}">—</option>
+                    <option th:each="d : ${allDepartments}" th:value="${d}" th:text="${d}">-</option>
                 </select>
             </div>
             <div class="col-6 col-md-4 col-lg-2" th:if="${allDesignations != null}">
                 <select class="form-select form-select-sm" id="eacOtFPos">
                     <option value="">All designations</option>
-                    <option th:each="p : ${allDesignations}" th:value="${p}" th:text="${p}">—</option>
+                    <option th:each="p : ${allDesignations}" th:value="${p}" th:text="${p}">-</option>
                 </select>
             </div>
             <div class="col-6 col-md-4 col-lg-2">
@@ -115,7 +120,7 @@
                 </div>
                 <div class="flex-grow-1" style="min-width:10rem;max-width:20rem">
                     <label class="form-label text-muted small mb-0" for="eacOtSearch">Search</label>
-                    <input type="search" id="eacOtSearch" class="form-control form-control-sm" placeholder="Name, EAC id, source…" autocomplete="off">
+                    <input type="search" id="eacOtSearch" class="form-control form-control-sm" placeholder="Name, EAC id, source..." autocomplete="off">
                 </div>
             </div>
             <div class="table-responsive" style="max-height:70vh">
@@ -143,22 +148,28 @@
                                  data-pos=${r.designation},
                                  data-st=${r.status},
                                  data-srch=${#strings.toLowerCase(r.eacId + ' ' + r.employeeName + ' ' + r.sourceLabel + ' ' + r.status)}">
-                        <td class="small" th:text="${r.sourceLabel}">—</td>
+                        <td class="small" th:text="${r.sourceLabel}">-</td>
                         <td>
-                            <div class="fw-semibold" th:text="${r.employeeName}">—</div>
-                            <div class="small text-muted" th:text="${r.eacId}">—</div>
+                            <div class="fw-semibold" th:text="${r.employeeName}">-</div>
+                            <div class="small text-muted" th:text="${r.eacId}">-</div>
                         </td>
-                        <td th:text="${r.workDate}">—</td>
-                        <td class="small"><span th:text="${r.startTime}">—</span> – <span th:text="${r.endTime}">—</span></td>
-                        <td class="fw-bold" th:text="${r.overtimeHours}">—</td>
-                        <td th:text="${r.offsetDate}">—</td>
-                        <td><span class="badge bg-light text-dark border" th:text="${r.status}">—</span></td>
-                        <td th:text="${r.otType}">—</td>
-                        <td th:text="${r.nextApprover}">HR</td>
-                        <td class="small" th:text="${r.lastActionBy}">—</td>
+                        <td th:text="${r.workDate}">-</td>
+                        <td class="small"><span th:text="${r.startTime}">-</span> - <span th:text="${r.endTime}">-</span></td>
+                        <td class="fw-bold" th:text="${r.overtimeHours}">-</td>
+                        <td th:text="${r.offsetDate}">-</td>
                         <td>
-                            <a th:if="${r.attachmentUrl != null}" th:href="${r.attachmentUrl}" target="_blank" rel="noopener" class="small">View</a>
-                            <span th:unless="${r.attachmentUrl != null}">—</span>
+                            <span class="badge"
+                                  th:classappend="${#strings.equalsIgnoreCase(r.status, 'PENDING')} ? ' bg-warning text-dark' : (${#strings.equalsIgnoreCase(r.status, 'APPROVED')} ? ' bg-success' : (${#strings.equalsIgnoreCase(r.status, 'REJECTED')} ? ' bg-danger' : ' bg-light text-dark border'))"
+                                  th:text="${r.status}">-</span>
+                        </td>
+                        <td th:text="${r.otType}">-</td>
+                        <td th:text="${r.nextApprover}">HR</td>
+                        <td class="small" th:text="${r.lastActionBy}">-</td>
+                        <td>
+                            <a th:if="${r.attachmentUrl != null}" th:href="${r.attachmentUrl}" target="_blank" rel="noopener" class="small text-decoration-none">
+                                <i class="fas fa-paperclip me-1" aria-hidden="true"></i>View
+                            </a>
+                            <span class="text-muted small" th:unless="${r.attachmentUrl != null}">N/A</span>
                         </td>
                         <td class="text-nowrap">
                             <th:block th:if="${r.tcmsAttendanceId > 0 and #strings.toString(r.status).toLowerCase().contains('pend')}">
@@ -175,21 +186,21 @@
                                     <button type="submit" class="btn btn-sm btn-outline-danger py-0" onclick="return confirm('Reject this OT?');">Reject</button>
                                 </form>
                             </th:block>
-                            <th:block th:if="${r.eacRequestId > 0 and #strings.toString(r.status).toUpperCase() == 'PENDING'}">
+                            <th:block th:if="${r.eacRequestId > 0 and #strings.toString(r.status).toLowerCase().contains('pend')}">
                                 <form th:action="@{/hr/overtime/eac/approve}" method="post" class="d-inline">
                                     <input type="hidden" name="eacRequestId" th:value="${r.eacRequestId}"/>
                                     <input type="hidden" name="dateFrom" th:value="${dateFrom}"/>
                                     <input type="hidden" name="dateTo" th:value="${dateTo}"/>
-                                    <button type="submit" class="btn btn-sm btn-success py-0">OK</button>
+                                    <button type="submit" class="btn btn-sm btn-success py-0">Approve</button>
                                 </form>
                                 <form th:action="@{/hr/overtime/eac/reject}" method="post" class="d-inline">
                                     <input type="hidden" name="eacRequestId" th:value="${r.eacRequestId}"/>
                                     <input type="hidden" name="dateFrom" th:value="${dateFrom}"/>
                                     <input type="hidden" name="dateTo" th:value="${dateTo}"/>
-                                    <button type="submit" class="btn btn-sm btn-outline-danger py-0">No</button>
+                                    <button type="submit" class="btn btn-sm btn-outline-danger py-0" onclick="return confirm('Reject this overtime request?');">Reject</button>
                                 </form>
                             </th:block>
-                            <span th:if="${r.tcmsAttendanceId == 0 and r.eacRequestId == 0}">—</span>
+                            <span th:if="${r.tcmsAttendanceId == 0 and r.eacRequestId == 0}">-</span>
                         </td>
                     </tr>
                     <tr th:if="${otRows == null or #lists.isEmpty(otRows)}">
@@ -199,11 +210,11 @@
                 </table>
             </div>
             <div class="d-flex flex-wrap justify-content-between align-items-center small text-muted border-top pt-2 mt-2" style="border-color:#e8ecec;">
-                <div id="eacOtInfo">—</div>
+                <div id="eacOtInfo">-</div>
                 <div class="d-flex gap-1">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="eacOtPrev">«</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="eacOtPrev" aria-label="Previous page"><i class="fas fa-chevron-left" aria-hidden="true"></i></button>
                     <span class="badge rounded-pill align-self-center" style="background:#1a4d4a" id="eacOtNo">1</span>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="eacOtNext">»</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="eacOtNext" aria-label="Next page"><i class="fas fa-chevron-right" aria-hidden="true"></i></button>
                 </div>
             </div>
         </div>
@@ -224,7 +235,7 @@
                     <label class="form-label small">Employee *</label>
                     <select name="employeeId" class="form-select form-select-sm" required>
                         <option value="" disabled selected>Select employee</option>
-                        <option th:each="e : ${activeEmployees}" th:value="${e.id}" th:text="${e.customEmployeeId + ' — ' + e.firstName + ' ' + e.lastName}">—</option>
+                        <option th:each="e : ${activeEmployees}" th:value="${e.id}" th:text="${e.id + ' - ' + e.firstName + ' ' + e.lastName}">-</option>
                     </select>
                 </div>
                 <div class="mb-2">
@@ -326,10 +337,29 @@
         if (prev) prev.disabled = page <= 0;
         if (next) next.disabled = (start + ps >= L);
     }
+    function applyOtStatHighlight() {
+        document.querySelectorAll('.eac-ot-stat-filter').forEach(function (btn) {
+            var st = btn.getAttribute('data-ot-status') || '';
+            btn.classList.toggle('eac-ot-stat-active', fS && fS.value === st);
+        });
+    }
+    document.querySelectorAll('.eac-ot-stat-filter').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var st = btn.getAttribute('data-ot-status') || '';
+            if (!fS) return;
+            fS.value = (fS.value === st) ? '' : st;
+            page = 0;
+            run();
+            applyOtStatHighlight();
+        });
+    });
     document.addEventListener('DOMContentLoaded', function () {
+        var initialOtStatus = /*[[${statusFilter}]]*/ '';
+        if (initialOtStatus && fS) { fS.value = initialOtStatus; }
         rows().forEach(function (r) { r.classList.remove('d-none'); });
+        applyOtStatHighlight();
         run();
-        [fB,fD,fP,fS,size].forEach(function (el) { if (el) el.addEventListener('change', function () { page = 0; run(); }); });
+        [fB,fD,fP,fS,size].forEach(function (el) { if (el) el.addEventListener('change', function () { page = 0; run(); applyOtStatHighlight(); }); });
         if (q) q.addEventListener('input', function () { page = 0; run(); });
         if (prev) prev.addEventListener('click', function () { if (page > 0) { page--; run(); } });
         if (next) next.addEventListener('click', function () { page++; run(); });

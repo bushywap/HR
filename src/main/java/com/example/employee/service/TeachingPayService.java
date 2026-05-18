@@ -18,19 +18,19 @@ public class TeachingPayService {
     @Autowired
     private OfficialEmployeeRepository officialEmployeeRepository;
 
-    public List<TeachingPay> listAll(Long employeeId) {
+    public List<TeachingPay> listAll(String employeeId) {
         if (employeeId != null && employeeId > 0) {
             return teachingPayRepository.findByEmployeeIdOrderByPeriodStartDesc(employeeId);
         }
         return teachingPayRepository.findAllByOrderByPeriodStartDescIdDesc();
     }
 
-    public Map<Long, String> buildEmployeeIdToLabel() {
-        Map<Long, String> map = new HashMap<>();
+    public Map<String, String> buildEmployeeIdToLabel() {
+        Map<String, String> map = new HashMap<>();
         for (OfficialEmployee e : officialEmployeeRepository.findAll()) {
             if (e.getId() == null) continue;
             String name = (e.getFirstName() != null ? e.getFirstName() : "") + " " + (e.getLastName() != null ? e.getLastName() : "");
-            String cid = e.getCustomEmployeeId() != null ? e.getCustomEmployeeId() : String.valueOf(e.getId());
+            String cid = e.getId() != null ? e.getId() : "";
             map.put(e.getId(), (cid + " — " + name).trim());
         }
         return map;

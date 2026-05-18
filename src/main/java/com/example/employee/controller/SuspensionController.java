@@ -53,14 +53,9 @@ public class SuspensionController {
             @RequestParam(required = false, name = "appliesTo") String appliesTo,
             RedirectAttributes redirectAttributes) {
 
-        Long employeeId = null;
+        String employeeId = null;
         if (appliesTo != null && !appliesTo.isBlank() && !"ALL".equalsIgnoreCase(appliesTo.trim())) {
-            try {
-                employeeId = Long.parseLong(appliesTo.trim());
-            } catch (NumberFormatException ex) {
-                redirectAttributes.addFlashAttribute("errorMessage", "Invalid employee selection.");
-                return "redirect:/hr/suspensions";
-            }
+            employeeId = appliesTo.trim();
             if (officialEmployeeRepository.findById(employeeId).isEmpty()) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Selected employee was not found.");
                 return "redirect:/hr/suspensions";
@@ -96,13 +91,13 @@ public class SuspensionController {
             .toList();
     }
 
-    private Map<Long, String> buildEmployeeLabels() {
-        Map<Long, String> map = new HashMap<>();
+    private Map<String, String> buildEmployeeLabels() {
+        Map<String, String> map = new HashMap<>();
         for (OfficialEmployee e : activeEmployeesSorted()) {
             if (e.getId() == null) {
                 continue;
             }
-            String cid = e.getCustomEmployeeId() != null ? e.getCustomEmployeeId() : String.valueOf(e.getId());
+            String cid = e.getId() != null ? e.getId() : "";
             String name = ((e.getFirstName() != null ? e.getFirstName() : "") + " "
                 + (e.getLastName() != null ? e.getLastName() : "")).trim();
             map.put(e.getId(), (cid + " — " + name).trim());

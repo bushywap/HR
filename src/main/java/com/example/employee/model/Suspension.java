@@ -23,12 +23,12 @@ public class Suspension {
     private LocalTime startTime;
 
     /** When null, suspension applies to all employees (e.g. typhoon). Otherwise only this employee. */
-    @Column(name = "employee_id")
-    private Long employeeId;
+    @Column(name = "employee_id", length = 20)
+    private String employeeId;
 
     public Suspension() {}
 
-    public Suspension(LocalDate date, String reason, LocalTime startTime, Long employeeId) {
+    public Suspension(LocalDate date, String reason, LocalTime startTime, String employeeId) {
         this.date = date;
         this.reason = reason;
         this.startTime = startTime;
@@ -66,11 +66,11 @@ public class Suspension {
         this.startTime = startTime; 
     }
 
-    public Long getEmployeeId() {
+    public String getEmployeeId() {
         return employeeId;
     }
 
-    public void setEmployeeId(Long employeeId) {
+    public void setEmployeeId(String employeeId) {
         this.employeeId = employeeId;
     }
 }

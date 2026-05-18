@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <th:block th:replace="~{fragments/head :: eacHead('HR — Salary rules (audit)')}"></th:block>
@@ -11,7 +11,7 @@
     <div id="content" class="main-content eac-payroll-shell p-3 p-md-4">
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
             <div class="d-flex align-items-center gap-2">
-                <button id="sidebarToggle" class="btn-hamburger">☰</button>
+                <button id="sidebarToggle" class="btn-hamburger"><i class="fas fa-bars" aria-hidden="true"></i><span class="visually-hidden">Menu</span></button>
                 <div>
                     <h1 class="h4 fw-bold text-danger m-0" style="letter-spacing: -0.5px;">Salary rules (audit)</h1>
                     <nav class="small text-muted mt-1" aria-label="Breadcrumb">
@@ -24,11 +24,11 @@
         <div class="alert alert-light border shadow-sm small mb-3">
             <div class="fw-bold text-secondary text-uppercase mb-1" style="font-size:0.7rem;letter-spacing:0.06em;">Legend (DOLE-style, 313 days / year)</div>
             <ul class="mb-0 ps-3">
-                <li><strong>Yearly</strong> = effective monthly × 12</li>
-                <li><strong>Daily</strong> = yearly ÷ 313 = (monthly × 12) ÷ 313 — same as <code>SP_ProcessRegularPayroll</code> when <code>admin_pay</code> &gt; 0</li>
-                <li><strong>Hourly</strong> = daily ÷ 8; <strong>Minute</strong> = hourly ÷ 60</li>
+                <li><strong>Yearly</strong> = effective monthly Ã— 12</li>
+                <li><strong>Daily</strong> = yearly Ã· 313 = (monthly Ã— 12) Ã· 313 — same as <code>SP_ProcessRegularPayroll</code> when <code>admin_pay</code> &gt; 0</li>
+                <li><strong>Hourly</strong> = daily Ã· 8; <strong>Minute</strong> = hourly Ã· 60</li>
                 <li><strong>Effective monthly</strong> uses <code>basic_salary</code> if set, else <code>admin_pay</code> (matches payroll list logic)</li>
-                <li><strong>Period basic</strong> = monthly × ½ if pay window days ≤ 16, else × 1 (matches SP)</li>
+                <li><strong>Period basic</strong> = monthly Ã— Â½ if pay window days â‰¤ 16, else Ã— 1 (matches SP)</li>
                 <li><strong>Part-time / flexi</strong> (type contains “part” or “flexi”): SP treats OT/deductions differently; rates here still follow monthly path when <code>admin_pay</code> &gt; 0</li>
             </ul>
         </div>
@@ -71,7 +71,7 @@
             </div>
             <div class="mt-2 small text-muted" th:if="${cutoffRangeLabel != null}">
                 Resolved: <strong th:text="${cutoffRangeLabel}">—</strong>
-                <span th:if="${periodDayCount != null}"> — Pay window day count (inclusive): <strong th:text="${periodDayCount}">0</strong> (SP uses ½× monthly if days ≤ 16, else 1×).</span>
+                <span th:if="${periodDayCount != null}"> — Pay window day count (inclusive): <strong th:text="${periodDayCount}">0</strong> (SP uses Â½Ã— monthly if days â‰¤ 16, else 1Ã—).</span>
             </div>
         </form>
 
@@ -100,7 +100,7 @@
                     </thead>
                     <tbody>
                     <tr th:each="r : ${rows}" th:classappend="${r.consistencyMismatch} ? ' table-warning' : ''">
-                        <td class="font-monospace fw-bold text-primary" th:text="${r.customEmployeeId}">—</td>
+                        <td class="font-monospace fw-bold text-primary" th:text="${r.id}">—</td>
                         <td th:text="${r.fullName}">—</td>
                         <td>
                             <span th:text="${r.employmentType}">—</span>

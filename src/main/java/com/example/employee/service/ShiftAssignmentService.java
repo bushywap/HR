@@ -29,11 +29,11 @@ public class ShiftAssignmentService {
     }
 
     public List<ShiftAssignment> listByRange(LocalDate from, LocalDate to) {
-        return assignmentRepository.findByWorkDateBetween(from, to);
+        return assignmentRepository.findByWorkDateBetweenWithDetails(from, to);
     }
 
     public void assign(
-        Long employeeId,
+        String employeeId,
         Long shiftId,
         LocalDate workDate,
         String username,
@@ -46,7 +46,7 @@ public class ShiftAssignmentService {
     ) {
         OfficialEmployee emp = employeeRepository.findById(employeeId).orElseThrow();
         ShiftSchedule shift = shiftRepository.findById(shiftId).orElseThrow();
-        ShiftAssignment row = assignmentRepository.findByEmployeeIdAndWorkDate(employeeId, workDate).orElseGet(ShiftAssignment::new);
+        ShiftAssignment row = assignmentRepository.findByEmployee_IdAndWorkDate(employeeId, workDate).orElseGet(ShiftAssignment::new);
         row.setEmployee(emp);
         row.setShift(shift);
         row.setWorkDate(workDate);

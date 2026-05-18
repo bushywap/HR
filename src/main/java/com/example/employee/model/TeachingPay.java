@@ -18,8 +18,8 @@ public class TeachingPay {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "employee_id", nullable = false)
-    private Long employeeId;
+    @Column(name = "employee_id", nullable = false, length = 20)
+    private String employeeId;
 
     @Column(name = "period_start")
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
@@ -107,8 +107,8 @@ public class TeachingPay {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-    public Long getEmployeeId() { return employeeId; }
-    public void setEmployeeId(Long employeeId) { this.employeeId = employeeId; }
+    public String getEmployeeId() { return employeeId; }
+    public void setEmployeeId(String employeeId) { this.employeeId = employeeId; }
     public LocalDate getPeriodStart() { return periodStart; }
     public void setPeriodStart(LocalDate periodStart) { this.periodStart = periodStart; }
     public LocalDate getPeriodEnd() { return periodEnd; }

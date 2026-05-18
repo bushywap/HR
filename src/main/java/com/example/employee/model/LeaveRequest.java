@@ -10,7 +10,8 @@ public class LeaveRequest {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
-    private int employeeId;
+    @Column(name = "employee_id", length = 20)
+    private String employeeId;
     private String leaveType;
     private LocalDate startDate;
     private LocalDate endDate;
@@ -30,8 +31,8 @@ public class LeaveRequest {
 
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }
-    public int getEmployeeId() { return employeeId; }
-    public void setEmployeeId(int employeeId) { this.employeeId = employeeId; }
+    public String getEmployeeId() { return employeeId; }
+    public void setEmployeeId(String employeeId) { this.employeeId = employeeId; }
     public String getLeaveType() { return leaveType; }
     public void setLeaveType(String leaveType) { this.leaveType = leaveType; }
     public LocalDate getStartDate() { return startDate; }

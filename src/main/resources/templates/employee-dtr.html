@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <th:block th:replace="~{fragments/head :: eacHead('DTR — EAC')}"></th:block>
@@ -39,7 +39,7 @@
                 <div class="lbl">Employee name</div>
                 <div class="val" th:text="${employee.firstName + ' ' + employee.lastName}">—</div>
                 <div class="lbl">Employee id</div>
-                <div class="val" th:text="${employee.customEmployeeId}">—</div>
+                <div class="val" th:text="${employee.id}">—</div>
                 <div class="lbl">Department</div>
                 <div class="val" th:text="${employee.department != null ? employee.department : '—'}">—</div>
                 <div class="lbl">Designation</div>

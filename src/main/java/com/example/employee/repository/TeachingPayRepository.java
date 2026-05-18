@@ -9,5 +9,5 @@ public interface TeachingPayRepository extends JpaRepository<TeachingPay, Long> 
 
     List<TeachingPay> findAllByOrderByPeriodStartDescIdDesc();
 
-    List<TeachingPay> findByEmployeeIdOrderByPeriodStartDesc(Long employeeId);
+    List<TeachingPay> findByEmployeeIdOrderByPeriodStartDesc(String employeeId);
 }

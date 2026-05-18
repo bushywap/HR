@@ -45,7 +45,7 @@ public final class ListSearchUtil {
             return true;
         }
         String hay = buildHaystack(
-            e.getCustomEmployeeId(),
+            e.getId(),
             e.getFirstName(),
             e.getLastName(),
             e.getEmail(),

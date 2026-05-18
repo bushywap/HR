@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <th:block th:replace="~{fragments/head :: eacHead('HR — Employee DTR')}"></th:block>
@@ -14,7 +14,7 @@
         <!-- Page header -->
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
             <div class="d-flex align-items-start gap-2">
-                <button type="button" id="sidebarToggle" class="btn-hamburger me-0 mt-1">☰</button>
+                <button type="button" id="sidebarToggle" class="btn-hamburger me-0 mt-1"><i class="fas fa-bars" aria-hidden="true"></i><span class="visually-hidden">Menu</span></button>
                 <div>
                     <h1 class="h4 fw-bold m-0" style="color: var(--eac-dark-gray, #2d3436); letter-spacing: -0.5px;">
                         Biometrics Log
@@ -25,10 +25,10 @@
                         <a th:href="@{/hr/dashboard}">Home</a><span class="sep">/</span>
                         <a th:href="@{/hr/employees}">Employees</a><span class="sep">/</span>
                         <a th:href="@{/hr/biometrics(cutoffPeriod=${selectedCutoff})}">Biometrics</a><span class="sep">/</span>
-                        <span th:text="${employee.customEmployeeId}">ID</span>
+                        <span th:text="${employee.id}">ID</span>
                     </nav>
                     <p class="text-muted small m-0 mt-1"
-                       th:text="'EAC ID: ' + ${employee.customEmployeeId} + '  ·  ' + ${employee.department}"></p>
+                       th:text="'EAC ID: ' + ${employee.id} + '  ·  ' + ${employee.department}"></p>
                 </div>
             </div>
 

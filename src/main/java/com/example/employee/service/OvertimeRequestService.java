@@ -18,7 +18,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -42,10 +44,10 @@ public class OvertimeRequestService {
 
     public record OvertimeMonthStats(long pending, long approved, long rejected, long total) {}
 
-    public OvertimeMonthStats getStatsForEmployeeMonth(long internalEmployeeId, YearMonth ym) {
+    public OvertimeMonthStats getStatsForEmployeeMonth(String employeeId, YearMonth ym) {
         LocalDate a = ym.atDay(1);
         LocalDate b = ym.atEndOfMonth();
-        List<OvertimeDisplayRow> list = buildEmployeeList(internalEmployeeId, a, b);
+        List<OvertimeDisplayRow> list = buildEmployeeList(employeeId, a, b);
         long p = 0, ap = 0, rj = 0;
         for (OvertimeDisplayRow row : list) {
             String s = row.status() != null ? row.status() : "";
@@ -61,15 +63,20 @@ public class OvertimeRequestService {
     }
 
     public OvertimeMonthStats getStatsForMonth(YearMonth ym) {
-        LocalDate a = ym.atDay(1);
-        LocalDate b = ym.atEndOfMonth();
-        long pe = eacOvertimeRequestRepository.countByStatusAndWorkDateBetween("PENDING", a, b);
-        long ae = eacOvertimeRequestRepository.countByStatusAndWorkDateBetween("APPROVED", a, b);
-        long re = eacOvertimeRequestRepository.countByStatusAndWorkDateBetween("REJECTED", a, b);
+        return getStatsForDateRange(ym.atDay(1), ym.atEndOfMonth());
+    }
 
-        long pt = attendanceRepository.countTcmsOvertimePendingMonth(a, b);
-        long at = attendanceRepository.countTcmsOvertimeApprovedMonth(a, b);
-        long rt = attendanceRepository.countTcmsOvertimeRejectedMonth(a, b);
+    public OvertimeMonthStats getStatsForDateRange(LocalDate from, LocalDate to) {
+        if (from == null || to == null || from.isAfter(to)) {
+            return new OvertimeMonthStats(0, 0, 0, 0);
+        }
+        long pe = eacOvertimeRequestRepository.countByStatusAndWorkDateBetween("PENDING", from, to);
+        long ae = eacOvertimeRequestRepository.countByStatusAndWorkDateBetween("APPROVED", from, to);
+        long re = eacOvertimeRequestRepository.countByStatusAndWorkDateBetween("REJECTED", from, to);
+
+        long pt = attendanceRepository.countTcmsOvertimePendingMonth(from, to);
+        long at = attendanceRepository.countTcmsOvertimeApprovedMonth(from, to);
+        long rt = attendanceRepository.countTcmsOvertimeRejectedMonth(from, to);
 
         long pending = pe + pt;
         long approved = ae + at;
@@ -97,28 +104,28 @@ public class OvertimeRequestService {
             }
             int rpt = log.getOvertimeReported() != null ? log.getOvertimeReported() : 0;
             int pay = log.getOvertimeHours() != null ? log.getOvertimeHours() : 0;
-            String hrs = rpt > 0 ? (rpt + " h rpt") : (pay > 0 ? (pay + " h pay") : "0 h");
+            String hrs = formatOtHoursLabel(rpt, pay);
             String statusLabel = "PENDING".equalsIgnoreCase(st) ? "Pending"
                 : ("APPROVED".equalsIgnoreCase(st) ? "Approved" : ("REJECTED".equalsIgnoreCase(st) ? "Rejected" : st));
             rows.add(new OvertimeDisplayRow(
                 "TCMS-" + log.getId(),
                 "TCMS / biometrics",
                 emp.getId(),
-                emp.getCustomEmployeeId() != null ? emp.getCustomEmployeeId() : "",
+                emp.getId() != null ? emp.getId() : "",
                 emp.getFirstName() + " " + emp.getLastName(),
-                emp.getDepartment() != null ? emp.getDepartment() : "—",
-                emp.getPosition() != null ? emp.getPosition() : "—",
+                emp.getDepartment() != null ? emp.getDepartment() : EMPTY,
+                emp.getPosition() != null ? emp.getPosition() : EMPTY,
                 campusOf(emp),
                 blankToDash(emp.getCampusCode()),
                 log.getDate(),
-                log.getTimeIn() != null ? log.getTimeIn().toString() : "—",
-                log.getTimeOut() != null ? log.getTimeOut().toString() : "—",
+                formatTime(log.getTimeIn()),
+                formatTime(log.getTimeOut()),
                 hrs,
-                "—",
+                EMPTY,
                 statusLabel,
                 "REGULAR",
                 "HR",
-                "—",
+                EMPTY,
                 null,
                 log.getId(),
                 0L
@@ -136,22 +143,22 @@ public class OvertimeRequestService {
                 "EAC-" + r.getId(),
                 "EAC request",
                 emp.getId(),
-                emp.getCustomEmployeeId() != null ? emp.getCustomEmployeeId() : "",
+                emp.getId() != null ? emp.getId() : "",
                 emp.getFirstName() + " " + emp.getLastName(),
-                emp.getDepartment() != null ? emp.getDepartment() : "—",
-                emp.getPosition() != null ? emp.getPosition() : "—",
+                emp.getDepartment() != null ? emp.getDepartment() : EMPTY,
+                emp.getPosition() != null ? emp.getPosition() : EMPTY,
                 campusOf(emp),
                 blankToDash(emp.getCampusCode()),
                 r.getWorkDate(),
-                r.getStartTime() != null ? r.getStartTime().toString() : "—",
-                r.getEndTime() != null ? r.getEndTime().toString() : "—",
-                h + " h",
-                r.getOffsetDate() != null ? r.getOffsetDate().toString() : "—",
+                formatTime(r.getStartTime()),
+                formatTime(r.getEndTime()),
+                formatOtHoursLabel(h, 0),
+                r.getOffsetDate() != null ? r.getOffsetDate().toString() : EMPTY,
                 r.getStatus(),
                 r.getOtType() != null ? r.getOtType() : "REGULAR",
                 "HR",
-                r.getLastActionBy() != null ? r.getLastActionBy() : "—",
-                r.getAttachmentPath(),
+                r.getLastActionBy() != null ? r.getLastActionBy() : EMPTY,
+                attachmentUrl(r.getAttachmentPath()),
                 0L,
                 r.getId()
             ));
@@ -162,32 +169,58 @@ public class OvertimeRequestService {
         return rows;
     }
 
-    public List<OvertimeDisplayRow> buildEmployeeList(long internalEmployeeId, LocalDate from, LocalDate to) {
+    public List<OvertimeDisplayRow> buildEmployeeList(String employeeId, LocalDate from, LocalDate to) {
         List<OvertimeDisplayRow> all = buildAdminList(from, to);
-        return all.stream().filter(r -> r.employeeInternalId() == internalEmployeeId).toList();
+        return all.stream().filter(r -> employeeId != null && employeeId.equals(r.employeeId())).toList();
     }
 
+    private static final String EMPTY = "-";
+    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
+
     private static String blankToDash(String c) {
-        return c != null && !c.isBlank() ? c.trim() : "—";
+        return c != null && !c.isBlank() ? c.trim() : EMPTY;
     }
 
     private static String campusOf(OfficialEmployee emp) {
         String c = emp.getCampusCode();
-        return c != null && !c.isBlank() ? "Campus " + c : "—";
+        return c != null && !c.isBlank() ? "Campus " + c : EMPTY;
+    }
+
+    private static String formatTime(LocalTime time) {
+        return time != null ? time.format(TIME_FMT) : EMPTY;
+    }
+
+    private static String formatOtHoursLabel(int reported, int approved) {
+        if (reported > 0 && approved > 0 && reported != approved) {
+            return reported + " hr reported, " + approved + " hr approved";
+        }
+        if (reported > 0) {
+            return reported + (reported == 1 ? " hr reported" : " hrs reported");
+        }
+        if (approved > 0) {
+            return approved + (approved == 1 ? " hr approved" : " hrs approved");
+        }
+        return "0 hr";
+    }
+
+    private static String attachmentUrl(String path) {
+        if (path == null || path.isBlank()) {
+            return null;
+        }
+        String p = path.trim();
+        return p.startsWith("/") ? p : "/" + p;
     }
 
     private Optional<OfficialEmployee> parseEmployee(String employeeIdStr) {
-        try {
-            long id = Long.parseLong(employeeIdStr);
-            return officialEmployeeRepository.findById(id);
-        } catch (Exception e) {
+        if (employeeIdStr == null || employeeIdStr.isBlank()) {
             return Optional.empty();
         }
+        return officialEmployeeRepository.findById(employeeIdStr.trim());
     }
 
     @Transactional
     public void submitEacRequest(
-        long employeeInternalId,
+        String employeeId,
         LocalDate workDate,
         Integer overtimeHours,
         String otType,
@@ -204,7 +237,7 @@ public class OvertimeRequestService {
             throw new IllegalArgumentException("Overtime hours must be greater than zero.");
         }
         EacOvertimeRequest r = new EacOvertimeRequest();
-        r.setEmployeeId(employeeInternalId);
+        r.setEmployeeId(employeeId);
         r.setWorkDate(workDate);
         r.setOvertimeHours(oh);
         r.setOtType(otType != null && !otType.isBlank() ? otType.trim() : "REGULAR");

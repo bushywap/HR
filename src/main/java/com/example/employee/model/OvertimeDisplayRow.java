@@ -8,7 +8,7 @@ import java.time.LocalDate;
 public record OvertimeDisplayRow(
     String rowKey,
     String sourceLabel,
-    long employeeInternalId,
+    String employeeId,
     String eacId,
     String employeeName,
     String department,

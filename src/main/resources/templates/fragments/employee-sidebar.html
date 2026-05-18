@@ -1,9 +1,7 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
-<!--
-  Employee portal sidebar. Param activePage: dashboard | dtr | attendance | overtime | ob | leaves | payslip | record
--->
+<!-- Employee portal sidebar. Param activePage: dashboard | dtr | attendance | overtime | ob | leaves | payslip | record -->
 <aside th:fragment="sidebar (activePage)" class="eac-emp-sidebar d-flex flex-column flex-shrink-0">
     <div class="eac-emp-sidebar__brand px-3 py-4 border-bottom border-white border-opacity-10">
         <a th:href="@{/employee/dashboard}" class="text-white text-decoration-none fw-bold text-uppercase small letter-spacing-1">EAC Portal</a>
@@ -26,9 +24,6 @@
         </a>
         <a th:href="@{/employee/leaves}" class="eac-emp-side-link" th:classappend="${activePage == 'leaves'} ? ' eac-emp-side-link--active' : ''">
             <i class="fas fa-umbrella-beach me-2 w-1"></i> Leaves
-        </a>
-        <a th:href="@{/employee/payslip}" class="eac-emp-side-link" th:classappend="${activePage == 'payslip'} ? ' eac-emp-side-link--active' : ''">
-            <i class="fas fa-file-invoice-dollar me-2 w-1"></i> Payslip
         </a>
         <a th:href="@{/employee/my-record}" class="eac-emp-side-link" th:classappend="${activePage == 'record'} ? ' eac-emp-side-link--active' : ''">
             <i class="fas fa-id-card me-2 w-1"></i> 201 / Personal data

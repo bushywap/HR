@@ -5,7 +5,7 @@ package com.example.employee.model;
  */
 public record SalaryAuditRow(
     long id,
-    String customEmployeeId,
+    String employeeId,
     String fullName,
     String department,
     String employmentType,
