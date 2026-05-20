@@ -15,7 +15,12 @@ Option A: Payroll app uses eac_hr_db (HR is source of truth)
 
 5. Do not re-import eacdb demo employees. Add staff in HR only; payroll reads the same rows.
 
-6. ID rules (prof format):
+6. HR demo employees on payroll lists:
+   - Run sql/align_demo_employees_for_payroll.sql (sets designation for 1-00001..1-00010)
+   - Payroll Register only shows employees AFTER Calculate all + Send for a period
+   - Compensation Masterlist shows all rows in employee table (search "1-00001")
+
+7. ID rules (prof format):
    - employee.custom_employee_id = official EAC id (format 1-00001)
    - HR types this on hire / F2F register (no auto-assign)
    - attendance.employee_id = same string as custom_employee_id

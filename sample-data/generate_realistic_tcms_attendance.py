@@ -1,12 +1,21 @@
 """
-Generate TCMS attendance CSV: Jan 1 2026 through May 18 2026.
-Aligned with shift assignments, leave_requests, OB, and OT sample data.
+Generate realistic TCMS attendance CSV for EAC HR biometrics import.
 
-Run: python sample-data/generate_realistic_tcms_attendance.py
-Then: python sample-data/build_tcms_attendance_xlsx.py
+Covers all payroll semi-monthly cycles used by the payroll app (Jan 1 – May 31, 2026).
+Aligned with seed employees, shift patterns, leave/OB/OT sample SQL.
+
+Run from repo root:
+  python sample-data/generate_realistic_tcms_attendance.py
+  python sample-data/generate_realistic_tcms_attendance.py --split-cycles
+  python sample-data/build_tcms_attendance_xlsx.py
+
+Import in HR: http://localhost:8080/hr/biometrics
+  - Full file: sample-data/tcms_attendance_4_payroll_cycles.csv
+  - Or one cycle at a time: sample-data/payroll_cycles/tcms_*.csv
 """
 from __future__ import annotations
 
+import argparse
 import csv
 import random
 from datetime import date, timedelta
@@ -14,6 +23,7 @@ from pathlib import Path
 
 BASE = Path(__file__).resolve().parent
 OUT = BASE / "tcms_attendance_4_payroll_cycles.csv"
+CYCLES_DIR = BASE / "payroll_cycles"
 
 HEADERS = [
     "User ID", "First Name", "Last Name", "Employee ID", "Date",
@@ -33,7 +43,7 @@ EMPLOYEES = [
     (11, "Patricia", "Ng", "1-00010", "cashier"),
 ]
 
-# Matches sql/seed_demo_ob_leave_ot_expanded.sql + sample_leave_requests_aligned_to_attendance.sql
+# Matches sql/seed_demo_ob_leave_ot_expanded.sql (APPROVED leave -> TCMS LeaveType)
 LEAVE_DAYS = {
     ("1-00001", "24/03/2026"): "SL",
     ("1-00001", "01/05/2026"): "VL",
@@ -48,6 +58,7 @@ LEAVE_DAYS = {
     ("1-00006", "22/01/2026"): "SL",
     ("1-00004", "09/04/2026"): "VL",
     ("1-00004", "01/02/2026"): "VL",
+    ("1-00004", "02/01/2026"): "VL",
     ("1-00007", "17/03/2026"): "VL",
     ("1-00007", "18/03/2026"): "VL",
     ("1-00008", "21/04/2026"): "SL",
@@ -55,7 +66,7 @@ LEAVE_DAYS = {
     ("1-00010", "03/02/2026"): "SL",
 }
 
-# Approved/pending OB: partial punches (not LeaveType)
+# Approved OB: partial punches (not LeaveType)
 OB_DAYS = {
     ("1-00001", "05/05/2026"): ("09:00", "12:00", "OB"),
     ("1-00002", "08/05/2026"): ("13:00", "17:00", "OB"),
@@ -68,7 +79,7 @@ OB_DAYS = {
     ("1-00010", "11/05/2026"): ("08:00", "12:00", "OB"),
 }
 
-# TCMS OT column + matches eac_overtime_request APPROVED dates
+# TCMS OT column + eac_overtime_request APPROVED dates
 OT_DAYS = {
     ("1-00001", "10/03/2026"): "1.5",
     ("1-00002", "18/02/2026"): "2",
@@ -81,13 +92,32 @@ OT_DAYS = {
     ("1-00008", "25/03/2026"): "2",
 }
 
+# Semi-monthly windows for payroll (ISO start/end inclusive)
+PAYROLL_CYCLES = [
+    ("2026-01-01", "2026-01-15", "tcms_2026-01-01_2026-01-15.csv"),
+    ("2026-01-16", "2026-01-31", "tcms_2026-01-16_2026-01-31.csv"),
+    ("2026-02-01", "2026-02-15", "tcms_2026-02-01_2026-02-15.csv"),
+    ("2026-02-16", "2026-02-28", "tcms_2026-02-16_2026-02-28.csv"),
+    ("2026-03-01", "2026-03-15", "tcms_2026-03-01_2026-03-15.csv"),
+    ("2026-03-16", "2026-03-31", "tcms_2026-03-16_2026-03-31.csv"),
+    ("2026-04-01", "2026-04-15", "tcms_2026-04-01_2026-04-15.csv"),
+    ("2026-04-16", "2026-04-30", "tcms_2026-04-16_2026-04-30.csv"),
+    ("2026-05-01", "2026-05-15", "tcms_2026-05-01_2026-05-15.csv"),
+    ("2026-05-16", "2026-05-31", "tcms_2026-05-16_2026-05-31.csv"),
+]
+
 RANGE_START = date(2026, 1, 1)
-RANGE_END = date(2026, 5, 18)
-random.seed(20260518)
+RANGE_END = date(2026, 5, 31)
+random.seed(20260519)
 
 
 def fmt_d(d: date) -> str:
     return f"{d.day:02d}/{d.month:02d}/{d.year}"
+
+
+def parse_csv_date(s: str) -> date:
+    d, m, y = s.strip().split("/")
+    return date(int(y), int(m), int(d))
 
 
 def works_on(pattern: str, d: date) -> bool:
@@ -151,7 +181,7 @@ def punch_row(pattern: str, d: date, eac: str) -> dict:
     return {"In": tin, "Out": tout, "Short": short, "OT": ot, "LeaveType": "None", "Day type": "Workday", "Work code": wc}
 
 
-def main():
+def generate_all_rows() -> list[dict]:
     rows = []
     d = RANGE_START
     while d <= RANGE_END:
@@ -172,14 +202,64 @@ def main():
                 "Day type": p["Day type"],
             })
         d += timedelta(days=1)
+    return rows
 
-    with OUT.open("w", encoding="utf-8", newline="") as f:
+
+def write_csv(path: Path, rows: list[dict]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8", newline="") as f:
         w = csv.DictWriter(f, fieldnames=HEADERS, quoting=csv.QUOTE_ALL)
         w.writeheader()
         w.writerows(rows)
 
-    print(f"Wrote {len(rows)} rows -> {OUT.name}")
-    print(f"  Leave days: {len(LEAVE_DAYS)}, OB partial: {len(OB_DAYS)}, OT: {len(OT_DAYS)}")
+
+def filter_cycle(rows: list[dict], start_iso: str, end_iso: str) -> list[dict]:
+    start = date.fromisoformat(start_iso)
+    end = date.fromisoformat(end_iso)
+    out = []
+    for r in rows:
+        d = parse_csv_date(r["Date"])
+        if start <= d <= end:
+            out.append(r)
+    return out
+
+
+def write_cycle_files(rows: list[dict]) -> None:
+    CYCLES_DIR.mkdir(parents=True, exist_ok=True)
+    for start_iso, end_iso, filename in PAYROLL_CYCLES:
+        cycle_rows = filter_cycle(rows, start_iso, end_iso)
+        path = CYCLES_DIR / filename
+        write_csv(path, cycle_rows)
+        print(f"  {filename}: {len(cycle_rows)} rows ({start_iso} .. {end_iso})")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Generate TCMS attendance CSV for EAC HR.")
+    parser.add_argument(
+        "--split-cycles",
+        action="store_true",
+        help="Also write one CSV per payroll semi-month under sample-data/payroll_cycles/",
+    )
+    parser.add_argument(
+        "--cycles-only",
+        action="store_true",
+        help="Only write per-cycle files (skip the combined master CSV)",
+    )
+    args = parser.parse_args()
+
+    rows = generate_all_rows()
+    if not args.cycles_only:
+        write_csv(OUT, rows)
+        print(f"Wrote {len(rows)} rows -> {OUT.name}")
+
+    if args.split_cycles or args.cycles_only:
+        print(f"Per-cycle files -> {CYCLES_DIR.name}/")
+        write_cycle_files(rows)
+
+    print(
+        f"  Range: {RANGE_START} .. {RANGE_END} | "
+        f"Leave: {len(LEAVE_DAYS)} | OB: {len(OB_DAYS)} | OT: {len(OT_DAYS)}"
+    )
 
 
 if __name__ == "__main__":

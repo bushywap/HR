@@ -8,17 +8,23 @@
 
 USE eac_hr_db;
 
--- Legacy numeric string ids -> demo EAC ids (extend if you had more legacy rows)
-UPDATE attendance SET employee_id = '1-00001' WHERE employee_id IN ('1', 1);
-UPDATE attendance SET employee_id = '1-00002' WHERE employee_id IN ('2', 2);
-UPDATE attendance SET employee_id = '1-00003' WHERE employee_id IN ('3', 3);
-UPDATE attendance SET employee_id = '1-00004' WHERE employee_id IN ('4', 4);
-UPDATE attendance SET employee_id = '1-00005' WHERE employee_id IN ('5', 5);
-UPDATE attendance SET employee_id = '1-00006' WHERE employee_id IN ('6', 6);
-UPDATE attendance SET employee_id = '1-00007' WHERE employee_id IN ('7', 7);
-UPDATE attendance SET employee_id = '1-00008' WHERE employee_id IN ('8', 8);
-UPDATE attendance SET employee_id = '1-00009' WHERE employee_id IN ('9', 9);
-UPDATE attendance SET employee_id = '1-00010' WHERE employee_id IN ('10', 10);
+-- Workbench "safe update mode" (1175) requires a KEY in WHERE; id is the PK.
+-- Alternatively: Edit -> Preferences -> SQL Editor -> uncheck "Safe Updates", reconnect.
+
+SET SESSION SQL_SAFE_UPDATES = 0;
+
+UPDATE attendance SET employee_id = '1-00001' WHERE employee_id IN ('1') AND id > 0;
+UPDATE attendance SET employee_id = '1-00002' WHERE employee_id IN ('2') AND id > 0;
+UPDATE attendance SET employee_id = '1-00003' WHERE employee_id IN ('3') AND id > 0;
+UPDATE attendance SET employee_id = '1-00004' WHERE employee_id IN ('4') AND id > 0;
+UPDATE attendance SET employee_id = '1-00005' WHERE employee_id IN ('5') AND id > 0;
+UPDATE attendance SET employee_id = '1-00006' WHERE employee_id IN ('6') AND id > 0;
+UPDATE attendance SET employee_id = '1-00007' WHERE employee_id IN ('7') AND id > 0;
+UPDATE attendance SET employee_id = '1-00008' WHERE employee_id IN ('8') AND id > 0;
+UPDATE attendance SET employee_id = '1-00009' WHERE employee_id IN ('9') AND id > 0;
+UPDATE attendance SET employee_id = '1-00010' WHERE employee_id IN ('10') AND id > 0;
+
+SET SESSION SQL_SAFE_UPDATES = 1;
 
 -- Verify: attendance keys should match active employees
 SELECT a.employee_id, COUNT(*) AS days

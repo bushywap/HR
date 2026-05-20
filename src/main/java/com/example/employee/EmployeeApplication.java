@@ -2,11 +2,19 @@ package com.example.employee;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.scheduling.annotation.EnableScheduling; 
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.boot.web.servlet.support.SpringBootServletInitializer;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
-@EnableScheduling // ADD THIS
-public class EmployeeApplication {
+@EnableScheduling
+public class EmployeeApplication extends SpringBootServletInitializer {
+
+    @Override
+    protected SpringApplicationBuilder configure(SpringApplicationBuilder application) {
+        return application.sources(EmployeeApplication.class);
+    }
+
     public static void main(String[] args) {
         SpringApplication.run(EmployeeApplication.class, args);
     }

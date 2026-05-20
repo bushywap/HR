@@ -1,0 +1,35 @@
+TCMS attendance import (HR + payroll demo)
+============================================
+
+1. Regenerate CSV (Jan 1 – May 31, 2026, all 10 demo employees):
+
+   python sample-data/generate_realistic_tcms_attendance.py --split-cycles
+   python sample-data/build_tcms_attendance_xlsx.py
+
+2. Clear old duplicate attendance (MySQL Workbench or PowerShell):
+
+   sql/clear_demo_attendance_before_reimport.sql
+
+3. Import in HR (8080):
+
+   http://localhost:8080/hr/biometrics
+
+   Option A — one upload (fastest):
+     sample-data/tcms_attendance_4_payroll_cycles.csv  (~1510 rows)
+
+   Option B — one pay period at a time (if upload times out):
+     sample-data/payroll_cycles/tcms_2026-04-01_2026-04-15.csv
+     ... (10 cycle files, same date ranges as payroll Calculate all)
+
+4. Verify:
+
+   SELECT MIN(`date`), MAX(`date`), COUNT(*) FROM attendance;
+   SELECT employee_id, COUNT(*) AS days
+   FROM attendance
+   WHERE `date` BETWEEN '2026-04-01' AND '2026-04-15'
+   GROUP BY employee_id;
+
+5. Payroll (8081): run sql/align_demo_employees_for_payroll.sql, restart payroll app,
+   then Calculate all + Send for each period.
+
+Files align with sql/seed_demo_school_employees.sql and seed_demo_ob_leave_ot_expanded.sql.
