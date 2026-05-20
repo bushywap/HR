@@ -2,6 +2,8 @@
 
 The project is already `<packaging>war</packaging>`. Data stays in **MySQL `eac_hr_db`** — you do **not** re-seed when opening the app again.
 
+**Faculty teaching pay** is only in the **payroll app** (`teaching_pay` table). HR no longer has teaching-pay screens.
+
 ---
 
 ## First time (one-time setup)

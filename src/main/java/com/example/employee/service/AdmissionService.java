@@ -1584,7 +1584,8 @@ public class AdmissionService {
                 payrollHolidaySuspensionService.computeForEmployee(emp, holidaySuspensionCtx);
             double adjustment = hx.adjustmentForSp();
             double holidayPay = hx.holidayPay();
-            double teachingPayTotal = sumTeachingPayForPeriod(emp.getId(), startDate, endDate);
+            // Faculty teaching pay is handled in the payroll app (teaching_pay table); HR does not maintain it.
+            double teachingPayTotal = 0.0;
             int absentDays = 0;
 
             String empIdStr = emp.getAttendanceEmployeeKey();
@@ -1663,24 +1664,6 @@ public class AdmissionService {
         }
         
         return activeEmployees;
-    }
-
-    /**
-     * Sums {@code total_teaching_pay} from {@code teaching_pay} for the same pay window passed to
-     * {@code SP_ProcessRegularPayroll} ({@code payroll.sql} <code>teaching_pay</code> table: {@code period_start},
-     * {@code period_end}).
-     */
-    private double sumTeachingPayForPeriod(String employeeId, LocalDate periodStart, LocalDate periodEnd) {
-        try {
-            String sql = "SELECT COALESCE(SUM(COALESCE(total_teaching_pay, 0)), 0) AS t "
-                       + "FROM teaching_pay "
-                       + "WHERE employee_id = ? AND period_start = ? AND period_end = ?";
-            Map<String, Object> row = jdbcTemplate.queryForMap(sql, employeeId, periodStart, periodEnd);
-            return toDoubleAmount(row.get("t"));
-        } catch (Exception e) {
-            log.debug("teaching_pay sum for employee {} period {}-{}: {}", employeeId, periodStart, periodEnd, e.getMessage());
-            return 0.0;
-        }
     }
 
     private static double toDoubleAmount(Object v) {
